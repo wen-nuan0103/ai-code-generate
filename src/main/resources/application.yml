@@ -1,6 +1,12 @@
 spring:
   application:
     name: ai-code
+  # mysql
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:13306/ai_auto_generate?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=UTC
+    username: root
+    password: root
 server:
   port: 8123
   servlet:
@@ -16,3 +22,7 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+# mybatis-flex
+mybatis-flex:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
