@@ -1,6 +1,8 @@
 spring:
   application:
     name: ai-code
+  profiles:
+    active: local
   # mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -26,3 +28,8 @@ knife4j:
 mybatis-flex:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+logging:
+  charset:
+    console: UTF-8
+  level:
+    dev.langchain4j: DEBUG
