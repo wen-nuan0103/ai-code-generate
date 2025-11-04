@@ -1,11 +1,11 @@
 package com.xuenai.aicodegenerate.ai.saver;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import com.xuenai.aicodegenerate.constant.AppConstant;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
-import com.xuenai.aicodegenerate.model.enums.CodeGeneratorTypeEnum;
+import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -15,17 +15,18 @@ import java.nio.charset.StandardCharsets;
  */
 public abstract class CodeFileSaverTemplate<T> {
 
-    protected static final String FILE_SAVE_ROOT_DIR = System.getProperty("user.dir") + "/tmp/code_output";
+    protected static final String FILE_SAVE_ROOT_DIR = AppConstant.CODE_OUTPUT_ROOT_DIR;
 
     /**
      * 保存代码的标准流程
      *
      * @param result 代码
+     * @param appId 应用 ID
      * @return 代码文件对象
      */
-    public final File saveCode(T result) {
+    public final File saveCode(T result,Long appId) {
         validateInput(result);
-        String path = buildUniqueDir();
+        String path = buildUniqueDir(appId);
         saveFiles(result, path);
         return new File(path);
     }
@@ -44,11 +45,13 @@ public abstract class CodeFileSaverTemplate<T> {
      * 生成一个唯一的目录
      * tmp/code_output/bizType_slowly
      *
+     * @param appId 应用 ID
      * @return 唯一目录
      */
-    protected final String buildUniqueDir() {
+    protected final String buildUniqueDir(Long appId) {
+        if (appId == null) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用 ID 不能为空");
         String type = getGeneratorType().getValue();
-        String unique = StrUtil.format("{}_{}",type , IdUtil.getSnowflakeNextId());
+        String unique = StrUtil.format("{}_{}",type , appId);
         String path = FILE_SAVE_ROOT_DIR + File.separator + unique;
         FileUtil.mkdir(path);
         return path;
@@ -71,7 +74,7 @@ public abstract class CodeFileSaverTemplate<T> {
      *
      * @return 代码生产类型
      */
-    protected abstract CodeGeneratorTypeEnum getGeneratorType();
+    protected abstract CodeGenerateTypeEnum getGeneratorType();
 
     /**
      * 保存文件

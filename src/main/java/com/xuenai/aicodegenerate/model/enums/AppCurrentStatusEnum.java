@@ -4,15 +4,16 @@ import cn.hutool.core.util.ObjUtil;
 import lombok.Getter;
 
 @Getter
-public enum CodeGeneratorTypeEnum {
-
-    HTML("原生 HTML 模式", "html"),
-    MULTI_FILE("原生多文件模式", "multi_file");
+public enum AppCurrentStatusEnum {
+    
+    GENERATE("生成中", 0),
+    FINISH("生成完成", 1),
+    DISRUPT("生成中断", 2);
 
     private final String text;
-    private final String value;
+    private final Integer value;
 
-    CodeGeneratorTypeEnum(String text, String value) {
+    AppCurrentStatusEnum(String text, Integer value) {
         this.text = text;
         this.value = value;
     }
@@ -23,16 +24,16 @@ public enum CodeGeneratorTypeEnum {
      * @param value 枚举值的value
      * @return 枚举值
      */
-    public static CodeGeneratorTypeEnum getEnumByValue(String value) {
+    public static AppCurrentStatusEnum getEnumByValue(Integer value) {
         if (ObjUtil.isEmpty(value)) {
             return null;
         }
-        for (CodeGeneratorTypeEnum anEnum : CodeGeneratorTypeEnum.values()) {
+        for (AppCurrentStatusEnum anEnum : AppCurrentStatusEnum.values()) {
             if (anEnum.value.equals(value)) {
                 return anEnum;
             }
         }
         return null;
     }
+    
 }
-

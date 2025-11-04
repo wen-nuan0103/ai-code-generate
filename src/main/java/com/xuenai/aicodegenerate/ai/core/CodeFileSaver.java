@@ -5,7 +5,7 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
 import com.xuenai.aicodegenerate.ai.mode.MultiFileCodeResult;
-import com.xuenai.aicodegenerate.model.enums.CodeGeneratorTypeEnum;
+import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +26,7 @@ public class CodeFileSaver {
      * @return 保存的文件
      */
     public static File saveHtmlCodeResult(HtmlCodeResult codeResult){
-        String basePath = buildUniqueDir(CodeGeneratorTypeEnum.HTML.getValue());
+        String basePath = buildUniqueDir(CodeGenerateTypeEnum.HTML.getValue());
         writeToFile(basePath, "index.html", codeResult.getHtml());
         return new File(basePath);
     }
@@ -38,7 +38,7 @@ public class CodeFileSaver {
      * @return 保存的文件路径
      */
     public static File saveMultiFileCodeResult(MultiFileCodeResult codeResult){
-        String basePath = buildUniqueDir(CodeGeneratorTypeEnum.MULTI_FILE.getValue());
+        String basePath = buildUniqueDir(CodeGenerateTypeEnum.MULTI_FILE.getValue());
         writeToFile(basePath, "index.html", codeResult.getHtml());
         writeToFile(basePath, "style.css", codeResult.getCss());
         writeToFile(basePath, "script.js", codeResult.getJavaScript());

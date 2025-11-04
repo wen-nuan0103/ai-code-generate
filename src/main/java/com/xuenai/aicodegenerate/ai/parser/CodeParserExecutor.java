@@ -4,7 +4,7 @@ import com.xuenai.aicodegenerate.ai.parser.impl.HtmlCodeParser;
 import com.xuenai.aicodegenerate.ai.parser.impl.MultiFileCodeParser;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
-import com.xuenai.aicodegenerate.model.enums.CodeGeneratorTypeEnum;
+import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 
 /**
  * 代码解析执行器
@@ -21,7 +21,7 @@ public class CodeParserExecutor {
      * @param generatorType 解析类型
      * @return 对应解析类型的结果集
      */
-    public static Object executeParser(String code, CodeGeneratorTypeEnum generatorType) {
+    public static Object executeParser(String code, CodeGenerateTypeEnum generatorType) {
         return switch (generatorType) {
           case HTML -> HTML_CODE_PARSER.parserCode(code);
           case MULTI_FILE -> MULTI_FILE_CODE_PARSER.parserCode(code);

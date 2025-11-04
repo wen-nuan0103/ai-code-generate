@@ -5,15 +5,15 @@ import com.xuenai.aicodegenerate.ai.mode.MultiFileCodeResult;
 import com.xuenai.aicodegenerate.ai.saver.CodeFileSaverTemplate;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
-import com.xuenai.aicodegenerate.model.enums.CodeGeneratorTypeEnum;
+import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 
 /**
  * 多文件代码生成器模板
  */
 public class MultiFileCodeSaverTemplate extends CodeFileSaverTemplate<MultiFileCodeResult> {
     @Override
-    protected CodeGeneratorTypeEnum getGeneratorType() {
-        return CodeGeneratorTypeEnum.MULTI_FILE;
+    protected CodeGenerateTypeEnum getGeneratorType() {
+        return CodeGenerateTypeEnum.MULTI_FILE;
     }
 
     @Override

@@ -5,15 +5,15 @@ import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
 import com.xuenai.aicodegenerate.ai.saver.CodeFileSaverTemplate;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
-import com.xuenai.aicodegenerate.model.enums.CodeGeneratorTypeEnum;
+import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 
 /**
  * HTML 代码文件保存模板
  */
 public class HtmlCodeFileSaverTemplate extends CodeFileSaverTemplate<HtmlCodeResult> {
     @Override
-    protected CodeGeneratorTypeEnum getGeneratorType() {
-        return CodeGeneratorTypeEnum.HTML;
+    protected CodeGenerateTypeEnum getGeneratorType() {
+        return CodeGenerateTypeEnum.HTML;
     }
 
     @Override

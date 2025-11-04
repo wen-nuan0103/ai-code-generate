@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 应用视图对象
@@ -40,9 +41,19 @@ public class AppVO implements Serializable {
     private String codeGeneratorType;
 
     /**
+     * 标签
+     */
+    private List<String> tags;
+
+    /**
      * 部署标识
      */
     private String deployKey;
+
+    /**
+     * 部署状态（枚举 0:下线 1:上线 2:上线失败）
+     */
+    private Integer deployStatus;
 
     /**
      * 部署时间
@@ -58,6 +69,21 @@ public class AppVO implements Serializable {
      * 创建用户id
      */
     private Long userId;
+
+    /**
+     * 可见范围状态（枚举 0:仅本人可见 1:全部可见）
+     */
+    private Integer scopeStatus;
+
+    /**
+     * 当前状态（枚举 0:生成中 1:生成完成 2:中断）
+     */
+    private Integer currentStatus;
+
+    /**
+     * 版本号
+     */
+    private Long version;
 
     /**
      * 创建时间

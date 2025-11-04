@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
  * AI 代码生成服务工厂
  */
 @Configuration
-public class AiCodeGeneratorServiceFactor {
+public class AiCodeGenerateServiceFactor {
     
     @Resource
     private ChatModel chatModel;
@@ -20,8 +20,8 @@ public class AiCodeGeneratorServiceFactor {
     private StreamingChatModel streamingChatModel;
     
     @Bean
-    public AiCodeGeneratorService aiCodeGeneratorService() {
-        return AiServices.builder(AiCodeGeneratorService.class)
+    public AiCodeGenerateService aiCodeGeneratorService() {
+        return AiServices.builder(AiCodeGenerateService.class)
                 .chatModel(chatModel)
                 .streamingChatModel(streamingChatModel)
                 .build();

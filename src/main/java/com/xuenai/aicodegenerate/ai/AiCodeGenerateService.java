@@ -2,13 +2,14 @@ package com.xuenai.aicodegenerate.ai;
 
 import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
 import com.xuenai.aicodegenerate.ai.mode.MultiFileCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.ProjectInfoResult;
 import dev.langchain4j.service.SystemMessage;
 import reactor.core.publisher.Flux;
 
 /**
  * AI 代码生成服务
  */
-public interface AiCodeGeneratorService {
+public interface AiCodeGenerateService {
 
     /**
      * 生成 HTML 代码
@@ -16,7 +17,7 @@ public interface AiCodeGeneratorService {
      * @param userMessage 用户消息
      * @return 生成的代码结果
      */
-    @SystemMessage(fromResource = "prompt/code-generataor-html-system-prompt.txt")
+    @SystemMessage(fromResource = "prompt/code-generate-html-system-prompt.txt")
     HtmlCodeResult generateHtmlCode(String userMessage);
 
     /**
@@ -25,8 +26,17 @@ public interface AiCodeGeneratorService {
      * @param userMessage 用户消息
      * @return 生成的代码结果
      */
-    @SystemMessage(fromResource = "prompt/code-generator-multi-file-system-prompt.txt")
+    @SystemMessage(fromResource = "prompt/code-generate-multi-file-system-prompt.txt")
     MultiFileCodeResult generateMultiFileCode(String userMessage);
+
+    /**
+     * 生成项目信息
+     *
+     * @param userMessage 用户消息
+     * @return 生成的代码结果
+     */
+    @SystemMessage(fromResource = "prompt/generate-app-info-system-prompt.txt")
+    ProjectInfoResult generateProjectInfo(String userMessage);
 
 
     /**
@@ -35,7 +45,7 @@ public interface AiCodeGeneratorService {
      * @param userMessage 用户消息
      * @return 生成的代码结果
      */
-    @SystemMessage(fromResource = "prompt/code-generataor-html-system-prompt.txt")
+    @SystemMessage(fromResource = "prompt/code-generate-html-system-prompt.txt")
     Flux<String> generateHtmlCodeStream(String userMessage);
 
     /**
@@ -44,7 +54,7 @@ public interface AiCodeGeneratorService {
      * @param userMessage 用户消息
      * @return 生成的代码结果
      */
-    @SystemMessage(fromResource = "prompt/code-generator-multi-file-system-prompt.txt")
+    @SystemMessage(fromResource = "prompt/code-generate-multi-file-system-prompt.txt")
     Flux<String> generateMultiFileCodeStream(String userMessage);
 }
 

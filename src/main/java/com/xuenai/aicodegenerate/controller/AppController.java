@@ -1,6 +1,7 @@
 package com.xuenai.aicodegenerate.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.xuenai.aicodegenerate.annotation.AuthCheck;
 import com.xuenai.aicodegenerate.common.BaseResponse;
@@ -10,10 +11,7 @@ import com.xuenai.aicodegenerate.constant.UserConstant;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
 import com.xuenai.aicodegenerate.exception.ThrowUtils;
-import com.xuenai.aicodegenerate.model.dto.app.AppAddRequest;
-import com.xuenai.aicodegenerate.model.dto.app.AppAdminUpdateRequest;
-import com.xuenai.aicodegenerate.model.dto.app.AppQueryRequest;
-import com.xuenai.aicodegenerate.model.dto.app.AppUpdateRequest;
+import com.xuenai.aicodegenerate.model.dto.app.*;
 import com.xuenai.aicodegenerate.model.entity.App;
 import com.xuenai.aicodegenerate.model.entity.User;
 import com.xuenai.aicodegenerate.model.vo.app.AppVO;
@@ -21,9 +19,14 @@ import com.xuenai.aicodegenerate.service.AppService;
 import com.xuenai.aicodegenerate.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 应用 控制层。
@@ -41,6 +44,47 @@ public class AppController {
     private UserService userService;
 
     /**
+     * 用户对话并生成应用
+     *
+     * @param appId       应用 ID
+     * @param userMessage 用户对话信息
+     * @param request     请求
+     * @return 流式输出结果
+     */
+    @GetMapping(value = "/chat/generate/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> chat(@RequestParam Long appId, @RequestParam String userMessage, HttpServletRequest request) {
+        ThrowUtils.throwIf(appId == null || appId < 0, ErrorCode.PARAMS_ERROR, "应用 ID 错误");
+        ThrowUtils.throwIf(userMessage == null, ErrorCode.PARAMS_ERROR, "提示词不能为空");
+        User loginUser = userService.getLoginUser(request);
+        Flux<String> content = appService.chatToGenerateCode(appId, userMessage, loginUser);
+        return content.map(chunk -> {
+            Map<String, String> wrapper = Map.of("d", chunk);
+            String json = JSONUtil.toJsonStr(wrapper);
+            return ServerSentEvent.<String>builder().data(json).build();
+        }).concatWith(
+                // 发送结束事件
+                Mono.just(ServerSentEvent.<String>builder().event("done").data("").build())
+        );
+    }
+
+    /**
+     * 部署应用
+     *
+     * @param deployRequest 部署请求
+     * @param request       请求
+     * @return 部署结果
+     */
+    @PostMapping("/deploy")
+    public BaseResponse<String> deploy(@RequestBody AppDeployRequest deployRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(deployRequest == null, ErrorCode.PARAMS_ERROR);
+        Long appId = deployRequest.getAppId();
+        ThrowUtils.throwIf(appId == null || appId < 0, ErrorCode.PARAMS_ERROR, "应用 ID 错误");
+        User loginUser = userService.getLoginUser(request);
+        String deploy = appService.deployApp(appId, loginUser);
+        return ResultUtils.success(deploy);
+    }
+
+    /**
      * 创建应用
      *
      * @param appAddRequest 创建应用请求
@@ -50,20 +94,10 @@ public class AppController {
     @PostMapping("/add")
     public BaseResponse<Long> addApp(@RequestBody AppAddRequest appAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appAddRequest == null, ErrorCode.PARAMS_ERROR);
-        App app = new App();
-        BeanUtil.copyProperties(appAddRequest, app);
-        // 数据校验
-        appService.validApp(app, true);
-        // 填充默认值
+
         User loginUser = userService.getLoginUser(request);
-        app.setUserId(loginUser.getId());
-        String initPrompt = appAddRequest.getInitPrompt();
-        app.setAppName(initPrompt.substring(0,Math.min(initPrompt.length(),12)));
-        // 写入数据库
-        boolean result = appService.save(app);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        // 返回新写入的数据 id
-        long newAppId = app.getId();
+        long newAppId = appService.createApp(appAddRequest, loginUser);
+
         return ResultUtils.success(newAppId);
     }
 
@@ -150,8 +184,7 @@ public class AppController {
      * @return 应用列表
      */
     @PostMapping("/my/list/page/vo")
-    public BaseResponse<Page<AppVO>> listMyAppVOByPage(@RequestBody AppQueryRequest appQueryRequest,
-                                                       HttpServletRequest request) {
+    public BaseResponse<Page<AppVO>> listMyAppVOByPage(@RequestBody AppQueryRequest appQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
         Page<AppVO> appVOPage = appService.listMyAppVOByPage(appQueryRequest, loginUser);
@@ -179,7 +212,7 @@ public class AppController {
      * @param deleteRequest 删除请求
      * @return 是否删除成功
      */
-    @PostMapping("/delete/admin")
+    @PostMapping("/admin/delete")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteAppByAdmin(@RequestBody DeleteRequest deleteRequest) {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
@@ -201,7 +234,7 @@ public class AppController {
      * @param appAdminUpdateRequest 管理员更新应用请求
      * @return 是否更新成功
      */
-    @PostMapping("/update/admin")
+    @PostMapping("/admin/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateAppByAdmin(@RequestBody AppAdminUpdateRequest appAdminUpdateRequest) {
         if (appAdminUpdateRequest == null || appAdminUpdateRequest.getId() <= 0) {
@@ -227,15 +260,14 @@ public class AppController {
      * @param appQueryRequest 查询请求
      * @return 应用列表
      */
-    @PostMapping("/list/page/vo/admin")
+    @PostMapping("/admin/list/page/vo")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<AppVO>> listAppVOByPageAdmin(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long pageNum = appQueryRequest.getPageNum();
         long pageSize = appQueryRequest.getPageSize();
-        Page<App> appPage = appService.page(Page.of(pageNum, pageSize),
-                appService.getQueryWrapper(appQueryRequest));
-        return ResultUtils.success(appService.getAppVOPage(appPage));
+        Page<App> appPage = appService.page(Page.of(pageNum, pageSize), appService.getQueryWrapper(appQueryRequest));
+        return ResultUtils.success(appService.getAppVOPage(appPage, false));
     }
 
     /**
@@ -244,7 +276,7 @@ public class AppController {
      * @param id 应用id
      * @return 应用详情
      */
-    @GetMapping("/get/vo/admin")
+    @GetMapping("/admin/get/vo")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<AppVO> getAppVOByIdAdmin(long id) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
@@ -254,7 +286,5 @@ public class AppController {
         // 获取封装类
         return ResultUtils.success(appService.getAppVO(app));
     }
-
-    // endregion
 
 }

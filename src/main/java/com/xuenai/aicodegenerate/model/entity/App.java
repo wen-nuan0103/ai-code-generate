@@ -4,6 +4,7 @@ import com.mybatisflex.annotation.Column;
 import com.mybatisflex.annotation.Id;
 import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
+import com.mybatisflex.core.handler.JacksonTypeHandler;
 import com.mybatisflex.core.keygen.KeyGenerators;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +14,7 @@ import lombok.NoArgsConstructor;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 应用 实体类。
@@ -56,9 +58,20 @@ public class App implements Serializable {
     private String codeGeneratorType;
 
     /**
+     * 标签
+     */
+    @Column(typeHandler = JacksonTypeHandler.class)
+    private List<String> tags;
+
+    /**
      * 部署标识
      */
     private String deployKey;
+
+    /**
+     * 部署状态（枚举 0:下线 1:上线 2:上线失败）
+     */
+    private Integer deployStatus;
 
     /**
      * 部署时间
@@ -74,6 +87,21 @@ public class App implements Serializable {
      * 创建用户id
      */
     private Long userId;
+
+    /**
+     * 可见范围状态（枚举 0:仅本人可见 1:全部可见）
+     */
+    private Integer scopeStatus;
+
+    /**
+     * 当前状态（枚举 0:生成中 1:生成完成 2:中断）
+     */
+    private Integer currentStatus;
+
+    /**
+     * 版本号
+     */
+    private Long version;
 
     /**
      * 编辑时间

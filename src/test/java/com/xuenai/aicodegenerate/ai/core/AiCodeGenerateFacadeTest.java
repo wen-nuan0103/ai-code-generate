@@ -1,6 +1,6 @@
 package com.xuenai.aicodegenerate.ai.core;
 
-import com.xuenai.aicodegenerate.model.enums.CodeGeneratorTypeEnum;
+import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,14 +9,14 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 
 @SpringBootTest
-class AiCodeGeneratorFacadeTest {
+class AiCodeGenerateFacadeTest {
     
     @Resource
-    private AiCodeGeneratorFacade aiCodeGeneratorFacade;
+    private AiCodeGenerateFacade aiCodeGenerateFacade;
 
     @Test
     void generatorAndSaveCode() {
-        Flux<String> result = aiCodeGeneratorFacade.generatorStreamAndSaveCode("生成一个登录页面，不超过300行代码，内容丰富", CodeGeneratorTypeEnum.MULTI_FILE);
+        Flux<String> result = aiCodeGenerateFacade.generateStreamAndSaveCode("生成一个登录页面，不超过300行代码，内容丰富", CodeGenerateTypeEnum.MULTI_FILE);
         List<String> blocked = result.collectList().block();
     }
 }

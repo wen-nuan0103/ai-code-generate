@@ -46,7 +46,7 @@ public class MyBatisCodeGenerator {
 
         // 设置根包，建议先生成到一个临时目录下，生成代码后，再移动到项目目录下
         globalConfig.getPackageConfig()
-                .setBasePackage("com.xuenai.aicodegenerate.generator_result");
+                .setBasePackage("com.xuenai.aicodegenerate.generate_result");
 
         // 设置表前缀和只生成哪些表，setGenerateTable 未配置时，生成所有表
         globalConfig.getStrategyConfig()
