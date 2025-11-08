@@ -19,10 +19,12 @@ import com.xuenai.aicodegenerate.model.dto.app.AppAddRequest;
 import com.xuenai.aicodegenerate.model.dto.app.AppQueryRequest;
 import com.xuenai.aicodegenerate.model.entity.App;
 import com.xuenai.aicodegenerate.model.entity.User;
+import com.xuenai.aicodegenerate.model.enums.ChatHistoryMessageTypeEnum;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 import com.xuenai.aicodegenerate.model.vo.app.AppVO;
 import com.xuenai.aicodegenerate.model.vo.user.UserVO;
 import com.xuenai.aicodegenerate.service.AppService;
+import com.xuenai.aicodegenerate.service.ChatHistoryService;
 import com.xuenai.aicodegenerate.service.UserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -49,10 +52,13 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
 
     @Resource
+    private AiCodeGenerateFacade aiCodeGenerateFacade;
+
+    @Resource
     private UserService userService;
 
     @Resource
-    private AiCodeGenerateFacade aiCodeGenerateFacade;
+    private ChatHistoryService chatHistoryService;
 
     @Override
     public Flux<String> chatToGenerateCode(Long appId, String message, User loginUser) {
@@ -67,7 +73,25 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         CodeGenerateTypeEnum generatorTypeEnum = CodeGenerateTypeEnum.getEnumByValue(type);
         ThrowUtils.throwIf(generatorTypeEnum == null, ErrorCode.PARAMS_ERROR, "应用代码生成类型错误");
 
-        return aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
+        chatHistoryService.createChatHistory(appId, loginUser.getId(), message, ChatHistoryMessageTypeEnum.USER.getValue());
+
+        Flux<String> content = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
+        StringBuilder builder = new StringBuilder();
+
+        return content.map(chunk -> {
+                    builder.append(chunk);
+                    return chunk;
+                })
+                .doOnComplete(() -> {
+                    String aiMessage = builder.toString();
+                    if (StrUtil.isNotBlank(aiMessage)) {
+                        chatHistoryService.createChatHistory(appId, loginUser.getId(), aiMessage, ChatHistoryMessageTypeEnum.AI.getValue());
+                    }
+                })
+                .doOnError(error -> {
+                    String errorMessage = "AI 回复失败: " + error.getMessage();
+                    chatHistoryService.createChatHistory(appId, loginUser.getId(), errorMessage, ChatHistoryMessageTypeEnum.AI.getValue());
+                });
     }
 
     @Override
@@ -229,6 +253,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         return this.getAppVOPage(appPage, false);
     }
 
+    @Override
+    public boolean removeById(Serializable id) {
+        if (id == null) return false;
+        long appId = Long.parseLong(id.toString());
+        if (appId <= 0) return false;
+
+        try {
+            chatHistoryService.deleteByAppId(appId);
+        } catch (Exception e) {
+            log.error("删除应用历史记录失败（应用 ID 为:{}）: {}", appId, e.getMessage());
+        }
+
+        return super.removeById(id);
+    }
 
     /**
      * 返回应用VO（不包含用户信息）
@@ -254,7 +292,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     public void asyncGenerateProjectInfo(App app) {
         try {
             String userMessage = app.getInitPrompt();
-            ProjectInfoResult info = aiCodeGenerateFacade.generateProjectInfo(userMessage);
+            ProjectInfoResult info = aiCodeGenerateFacade.generateProjectInfo(app.getId(),userMessage);
 
             App reviseApp = new App();
             reviseApp.setId(app.getId());

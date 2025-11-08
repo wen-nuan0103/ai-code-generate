@@ -1,6 +1,7 @@
 package com.xuenai.aicodegenerate.ai.core;
 
 import com.xuenai.aicodegenerate.ai.AiCodeGenerateService;
+import com.xuenai.aicodegenerate.ai.AiCodeGenerateServiceFactor;
 import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
 import com.xuenai.aicodegenerate.ai.mode.MultiFileCodeResult;
 import com.xuenai.aicodegenerate.ai.mode.ProjectInfoResult;
@@ -24,7 +25,7 @@ import java.io.File;
 public class AiCodeGenerateFacade {
 
     @Resource
-    private AiCodeGenerateService aiCodeGenerateService;
+    private AiCodeGenerateServiceFactor aiCodeGenerateServiceFactor;
 
     /**
      * 统一对外提供的方法，生成并保存文件
@@ -38,6 +39,7 @@ public class AiCodeGenerateFacade {
         if (generatorType == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不能为空");
         }
+        AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactor.getAiCodeGeneratorService(appId);
         return switch (generatorType) {
             case HTML -> {
                 HtmlCodeResult result = aiCodeGenerateService.generateHtmlCode(userMessage);
@@ -66,6 +68,7 @@ public class AiCodeGenerateFacade {
         if (typeEnum == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不能为空");
         }
+        AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactor.getAiCodeGeneratorService(appId);
         return switch (typeEnum) {
             case HTML -> {
                 Flux<String> result = aiCodeGenerateService.generateHtmlCodeStream(userMessage);
@@ -81,15 +84,15 @@ public class AiCodeGenerateFacade {
             }
         };
     }
-    
+
     /**
      * 生成项目信息
      *
      * @param userMessage 提示词
      * @return 项目信息
      */
-    public ProjectInfoResult generateProjectInfo(String userMessage) {
-        return aiCodeGenerateService.generateProjectInfo(userMessage);
+    public ProjectInfoResult generateProjectInfo(long appId, String userMessage) {
+        return aiCodeGenerateServiceFactor.getAiCodeGeneratorService(appId).generateProjectInfo(userMessage);
     }
 
     /**
@@ -106,7 +109,7 @@ public class AiCodeGenerateFacade {
             try {
                 String result = builder.toString();
                 Object parserResult = CodeParserExecutor.executeParser(result, generatorType);
-                File file = CodeFileSaverExecutor.executorSaverCode(parserResult, generatorType,appId);
+                File file = CodeFileSaverExecutor.executorSaverCode(parserResult, generatorType, appId);
                 log.info("代码保存成功: {}", file.getAbsolutePath());
             } catch (Exception e) {
                 log.error("代码保存失败: {}", e.getMessage());

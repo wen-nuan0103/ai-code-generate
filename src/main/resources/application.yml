@@ -3,16 +3,29 @@ spring:
     name: ai-code
   profiles:
     active: local
+  session:
+    store-type: redis
+    # 30天
+    timeout: 2592000
   # mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:13306/ai_auto_generate?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=UTC
     username: root
     password: root
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      db: 1
+      ttl: 3600
 server:
   port: 8123
   servlet:
     context-path: /api
+    session:
+      cookie:
+        max-age: 2592000
 # springdoc-openapi项目配置
 springdoc:
   group-configs:

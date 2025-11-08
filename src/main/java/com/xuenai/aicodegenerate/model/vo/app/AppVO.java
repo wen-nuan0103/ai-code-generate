@@ -76,6 +76,11 @@ public class AppVO implements Serializable {
     private Integer scopeStatus;
 
     /**
+     * 可见范围状态（枚举 0:仅本人可见 1:全部可见）
+     */
+    private Integer chatScopeStatus;
+
+    /**
      * 当前状态（枚举 0:生成中 1:生成完成 2:中断）
      */
     private Integer currentStatus;

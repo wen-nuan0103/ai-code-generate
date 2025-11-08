@@ -20,7 +20,7 @@ import java.io.File;
 public class StaticResourceController {
 
     // 应用生成根目录（用于浏览）
-    private static final String PREVIEW_ROOT_DIR = AppConstant.CODE_DEPLOY_ROOT_DIR;
+    private static final String PREVIEW_ROOT_DIR = AppConstant.CODE_OUTPUT_ROOT_DIR;
 
     /**
      * 提供静态资源访问，支持目录重定向
@@ -45,7 +45,7 @@ public class StaticResourceController {
                 resourcePath = "/index.html";
             }
             // 构建文件路径
-            String filePath = PREVIEW_ROOT_DIR + "/" + deployKey + resourcePath;
+            String filePath = (PREVIEW_ROOT_DIR.replaceAll("\\\\","/") + "/" + deployKey + resourcePath);
             File file = new File(filePath);
             // 检查文件是否存在
             if (!file.exists()) {
