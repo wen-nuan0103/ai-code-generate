@@ -1,7 +1,7 @@
 package com.xuenai.aicodegenerate.ai.saver.impl;
 
 import cn.hutool.core.util.StrUtil;
-import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.HtmlCodeResult;
 import com.xuenai.aicodegenerate.ai.saver.CodeFileSaverTemplate;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;

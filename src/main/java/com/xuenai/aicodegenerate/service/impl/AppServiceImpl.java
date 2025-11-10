@@ -8,8 +8,10 @@ import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.xuenai.aicodegenerate.ai.builder.VueProjectBuilder;
 import com.xuenai.aicodegenerate.ai.core.AiCodeGenerateFacade;
-import com.xuenai.aicodegenerate.ai.mode.ProjectInfoResult;
+import com.xuenai.aicodegenerate.ai.handler.StreamHandlerExecutor;
+import com.xuenai.aicodegenerate.ai.mode.result.ProjectInfoResult;
 import com.xuenai.aicodegenerate.constant.AppConstant;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
@@ -60,6 +62,13 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private ChatHistoryService chatHistoryService;
 
+    @Resource
+    private StreamHandlerExecutor streamHandlerExecutor;
+    
+    @Resource
+    private VueProjectBuilder vueProjectBuilder;
+
+
     @Override
     public Flux<String> chatToGenerateCode(Long appId, String message, User loginUser) {
         ThrowUtils.throwIf(appId == null || appId < 0, ErrorCode.PARAMS_ERROR, "应用 ID 错误");
@@ -75,23 +84,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         chatHistoryService.createChatHistory(appId, loginUser.getId(), message, ChatHistoryMessageTypeEnum.USER.getValue());
 
-        Flux<String> content = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
-        StringBuilder builder = new StringBuilder();
+        Flux<String> stream = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
+        
+        return streamHandlerExecutor.doExecute(stream, chatHistoryService, appId, loginUser, generatorTypeEnum);
 
-        return content.map(chunk -> {
-                    builder.append(chunk);
-                    return chunk;
-                })
-                .doOnComplete(() -> {
-                    String aiMessage = builder.toString();
-                    if (StrUtil.isNotBlank(aiMessage)) {
-                        chatHistoryService.createChatHistory(appId, loginUser.getId(), aiMessage, ChatHistoryMessageTypeEnum.AI.getValue());
-                    }
-                })
-                .doOnError(error -> {
-                    String errorMessage = "AI 回复失败: " + error.getMessage();
-                    chatHistoryService.createChatHistory(appId, loginUser.getId(), errorMessage, ChatHistoryMessageTypeEnum.AI.getValue());
-                });
     }
 
     @Override
@@ -113,13 +109,21 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
         File sourceDir = new File(sourceDirPath);
         ThrowUtils.throwIf(!sourceDir.exists() || !sourceDir.isDirectory(), ErrorCode.SYSTEM_ERROR, "代码生成目录不存在");
+        CodeGenerateTypeEnum generateType = CodeGenerateTypeEnum.getEnumByValue(app.getCodeGeneratorType());
+        if (generateType.equals(CodeGenerateTypeEnum.VUE_PROJECT)) {
+            boolean buildSuccess = vueProjectBuilder.buildProject(sourceDirPath);
+            ThrowUtils.throwIf(!buildSuccess, ErrorCode.SYSTEM_ERROR, "项目构建失败");
+            File distDir = new File(sourceDirPath, "dist");
+            ThrowUtils.throwIf(!distDir.exists() || !distDir.isDirectory(), ErrorCode.SYSTEM_ERROR, "项目构建失败");
+            sourceDir = distDir;
+            log.info("项目构建成功,将部署 dist 目录 :{}",distDir.getAbsolutePath());
+        }
         String deployDir = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
         try {
             FileUtil.copyContent(sourceDir, new File(deployDir), true);
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败: " + e.getMessage());
         }
-
         App updateApp = new App();
         updateApp.setId(appId);
         updateApp.setDeployKey(deployKey);
@@ -154,7 +158,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         this.validApp(app, true);
 
-        app.setCodeGeneratorType(CodeGenerateTypeEnum.MULTI_FILE.getValue());
+        app.setCodeGeneratorType(CodeGenerateTypeEnum.VUE_PROJECT.getValue());
         app.setUserId(loginUser.getId());
         String initPrompt = appAddRequest.getInitPrompt();
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
@@ -292,7 +296,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     public void asyncGenerateProjectInfo(App app) {
         try {
             String userMessage = app.getInitPrompt();
-            ProjectInfoResult info = aiCodeGenerateFacade.generateProjectInfo(app.getId(),userMessage);
+            ProjectInfoResult info = aiCodeGenerateFacade.generateProjectInfo(app.getId(), userMessage);
 
             App reviseApp = new App();
             reviseApp.setId(app.getId());

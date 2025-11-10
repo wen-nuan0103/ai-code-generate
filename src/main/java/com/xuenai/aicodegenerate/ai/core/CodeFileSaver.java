@@ -3,8 +3,8 @@ package com.xuenai.aicodegenerate.ai.core;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
-import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
-import com.xuenai.aicodegenerate.ai.mode.MultiFileCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.HtmlCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.MultiFileCodeResult;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 
 import java.io.File;

@@ -1,4 +1,4 @@
-package com.xuenai.aicodegenerate.ai.mode;
+package com.xuenai.aicodegenerate.ai.mode.result;
 
 import dev.langchain4j.model.output.structured.Description;
 import lombok.Data;

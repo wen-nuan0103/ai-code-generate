@@ -1,6 +1,6 @@
 package com.xuenai.aicodegenerate.ai.parser.impl;
 
-import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.HtmlCodeResult;
 import com.xuenai.aicodegenerate.ai.parser.CodeParser;
 
 import java.util.regex.Matcher;

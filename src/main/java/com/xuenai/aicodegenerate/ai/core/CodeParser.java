@@ -1,7 +1,7 @@
 package com.xuenai.aicodegenerate.ai.core;
 
-import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
-import com.xuenai.aicodegenerate.ai.mode.MultiFileCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.HtmlCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.MultiFileCodeResult;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

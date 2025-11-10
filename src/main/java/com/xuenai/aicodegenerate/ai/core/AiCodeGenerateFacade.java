@@ -1,15 +1,22 @@
 package com.xuenai.aicodegenerate.ai.core;
 
+import cn.hutool.json.JSONUtil;
 import com.xuenai.aicodegenerate.ai.AiCodeGenerateService;
 import com.xuenai.aicodegenerate.ai.AiCodeGenerateServiceFactor;
-import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
-import com.xuenai.aicodegenerate.ai.mode.MultiFileCodeResult;
-import com.xuenai.aicodegenerate.ai.mode.ProjectInfoResult;
+import com.xuenai.aicodegenerate.ai.mode.message.AiResponseMessage;
+import com.xuenai.aicodegenerate.ai.mode.message.ToolExecutedMessage;
+import com.xuenai.aicodegenerate.ai.mode.message.ToolRequestMessage;
+import com.xuenai.aicodegenerate.ai.mode.result.HtmlCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.MultiFileCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.ProjectInfoResult;
 import com.xuenai.aicodegenerate.ai.parser.CodeParserExecutor;
 import com.xuenai.aicodegenerate.ai.saver.CodeFileSaverExecutor;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.tool.ToolExecution;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -68,7 +75,7 @@ public class AiCodeGenerateFacade {
         if (typeEnum == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不能为空");
         }
-        AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactor.getAiCodeGeneratorService(appId);
+        AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactor.getAiCodeGeneratorService(appId,typeEnum);
         return switch (typeEnum) {
             case HTML -> {
                 Flux<String> result = aiCodeGenerateService.generateHtmlCodeStream(userMessage);
@@ -77,6 +84,10 @@ public class AiCodeGenerateFacade {
             case MULTI_FILE -> {
                 Flux<String> result = aiCodeGenerateService.generateMultiFileCodeStream(userMessage);
                 yield processCodeStream(result, typeEnum, appId);
+            }
+            case VUE_PROJECT -> {
+                TokenStream tokenStream = aiCodeGenerateService.generateVueProjectCodeStream(appId,userMessage);
+                yield processTokenStream(tokenStream);
             }
             default -> {
                 String errorMessage = "不支持生成该类型: " + typeEnum;
@@ -116,5 +127,32 @@ public class AiCodeGenerateFacade {
             }
         });
     }
+
+    /**
+     * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
+     *
+     * @param tokenStream TokenStream 对象
+     * @return Flux<String> 流式响应
+     */
+    private Flux<String> processTokenStream(TokenStream tokenStream) {
+        return Flux.create(sink -> {
+            tokenStream.onPartialResponse((String partialResponse) -> {
+                AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
+                sink.next(JSONUtil.toJsonStr(aiResponseMessage));
+            }).onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                sink.next(JSONUtil.toJsonStr(toolRequestMessage));
+            }).onToolExecuted((ToolExecution toolExecution) -> {
+                ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+            }).onCompleteResponse((ChatResponse response) -> {
+                sink.complete();
+            }).onError((Throwable error) -> {
+                error.printStackTrace();
+                sink.error(error);
+            }).start();
+        });
+    }
+
 
 }

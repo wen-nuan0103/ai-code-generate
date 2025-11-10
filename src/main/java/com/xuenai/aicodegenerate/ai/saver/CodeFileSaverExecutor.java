@@ -1,7 +1,7 @@
 package com.xuenai.aicodegenerate.ai.saver;
 
-import com.xuenai.aicodegenerate.ai.mode.HtmlCodeResult;
-import com.xuenai.aicodegenerate.ai.mode.MultiFileCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.HtmlCodeResult;
+import com.xuenai.aicodegenerate.ai.mode.result.MultiFileCodeResult;
 import com.xuenai.aicodegenerate.ai.saver.impl.HtmlCodeFileSaverTemplate;
 import com.xuenai.aicodegenerate.ai.saver.impl.MultiFileCodeSaverTemplate;
 import com.xuenai.aicodegenerate.exception.BusinessException;
