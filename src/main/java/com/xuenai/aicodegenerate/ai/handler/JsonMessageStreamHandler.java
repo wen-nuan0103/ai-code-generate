@@ -45,21 +45,14 @@ public class JsonMessageStreamHandler {
      */
     public Flux<String> handle(Flux<String> originFlux, ChatHistoryService chatHistoryService, long appId, User loginUser) {
         StringBuilder chatHistoryStringBuilder = new StringBuilder();
-        // 用于跟踪已经见过的工具ID，判断是否是第一次调用
         Set<String> seenToolIds = new HashSet<>();
-        return originFlux.map(chunk -> {
-                    // 解析每个 JSON 消息块
-                    return handleJsonMessageChunk(chunk, chatHistoryStringBuilder, seenToolIds);
-                }).filter(StrUtil::isNotEmpty) // 过滤空字串
+        return originFlux.map(chunk -> handleJsonMessageChunk(chunk, chatHistoryStringBuilder, seenToolIds)).filter(StrUtil::isNotEmpty)
                 .doOnComplete(() -> {
-                    // 流式响应完成后，添加 AI 消息到对话历史
                     String aiResponse = chatHistoryStringBuilder.toString();
                     chatHistoryService.createChatHistory(appId, loginUser.getId(), aiResponse, ChatHistoryMessageTypeEnum.AI.getValue());
-                    // 调用 VueProjectBuilder 构建项目
                     String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/vue_project_" + appId;
                     vueProjectBuilder.buildProjectAsync(projectPath);
                 }).doOnError(error -> {
-                    // 如果AI回复失败，也要记录错误消息
                     String errorMessage = "AI回复失败: " + error.getMessage();
                     chatHistoryService.createChatHistory(appId, loginUser.getId(), errorMessage, ChatHistoryMessageTypeEnum.AI.getValue());
                 });
@@ -76,20 +69,16 @@ public class JsonMessageStreamHandler {
             case AI_RESPONSE -> {
                 AiResponseMessage aiMessage = JSONUtil.toBean(chunk, AiResponseMessage.class);
                 String data = aiMessage.getData();
-                // 直接拼接响应
                 chatHistoryStringBuilder.append(data);
                 return data;
             }
             case TOOL_REQUEST -> {
                 ToolRequestMessage toolRequestMessage = JSONUtil.toBean(chunk, ToolRequestMessage.class);
                 String toolId = toolRequestMessage.getId();
-                // 检查是否是第一次看到这个工具 ID
                 if (toolId != null && !seenToolIds.contains(toolId)) {
-                    // 第一次调用这个工具，记录 ID 并完整返回工具信息
                     seenToolIds.add(toolId);
                     return "\n\n[选择工具] 写入文件\n\n";
                 } else {
-                    // 不是第一次调用这个工具，直接返回空
                     return "";
                 }
             }
@@ -105,7 +94,6 @@ public class JsonMessageStreamHandler {
                         %s
                         ```
                         """, relativeFilePath, suffix, content);
-                // 输出前端和要持久化的内容
                 String output = String.format("\n\n%s\n\n", result);
                 chatHistoryStringBuilder.append(output);
                 return output;

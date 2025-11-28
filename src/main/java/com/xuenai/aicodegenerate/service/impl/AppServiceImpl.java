@@ -8,6 +8,7 @@ import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.xuenai.aicodegenerate.ai.AiCodeGenerateTypeRoutingService;
 import com.xuenai.aicodegenerate.ai.builder.VueProjectBuilder;
 import com.xuenai.aicodegenerate.ai.core.AiCodeGenerateFacade;
 import com.xuenai.aicodegenerate.ai.handler.StreamHandlerExecutor;
@@ -21,16 +22,17 @@ import com.xuenai.aicodegenerate.model.dto.app.AppAddRequest;
 import com.xuenai.aicodegenerate.model.dto.app.AppQueryRequest;
 import com.xuenai.aicodegenerate.model.entity.App;
 import com.xuenai.aicodegenerate.model.entity.User;
+import com.xuenai.aicodegenerate.model.enums.AppDeployStatusEnum;
 import com.xuenai.aicodegenerate.model.enums.ChatHistoryMessageTypeEnum;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 import com.xuenai.aicodegenerate.model.vo.app.AppVO;
 import com.xuenai.aicodegenerate.model.vo.user.UserVO;
 import com.xuenai.aicodegenerate.service.AppService;
 import com.xuenai.aicodegenerate.service.ChatHistoryService;
+import com.xuenai.aicodegenerate.service.ScreenshotService;
 import com.xuenai.aicodegenerate.service.UserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -57,14 +59,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private AiCodeGenerateFacade aiCodeGenerateFacade;
 
     @Resource
+    private AiCodeGenerateTypeRoutingService aiCodeGenerateTypeRoutingService;
+
+    @Resource
     private UserService userService;
 
     @Resource
     private ChatHistoryService chatHistoryService;
+    
+    @Resource
+    private ScreenshotService screenshotService;
 
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
-    
+
     @Resource
     private VueProjectBuilder vueProjectBuilder;
 
@@ -85,7 +93,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         chatHistoryService.createChatHistory(appId, loginUser.getId(), message, ChatHistoryMessageTypeEnum.USER.getValue());
 
         Flux<String> stream = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
-        
+
         return streamHandlerExecutor.doExecute(stream, chatHistoryService, appId, loginUser, generatorTypeEnum);
 
     }
@@ -116,7 +124,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             File distDir = new File(sourceDirPath, "dist");
             ThrowUtils.throwIf(!distDir.exists() || !distDir.isDirectory(), ErrorCode.SYSTEM_ERROR, "项目构建失败");
             sourceDir = distDir;
-            log.info("项目构建成功,将部署 dist 目录 :{}",distDir.getAbsolutePath());
+            log.info("项目构建成功,将部署 dist 目录 :{}", distDir.getAbsolutePath());
         }
         String deployDir = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
         try {
@@ -124,13 +132,23 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "部署失败: " + e.getMessage());
         }
-        App updateApp = new App();
-        updateApp.setId(appId);
-        updateApp.setDeployKey(deployKey);
-        updateApp.setDeployedTime(LocalDateTime.now());
-        boolean result = this.updateById(updateApp);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
-        return String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        App reviseApp = new App();
+        reviseApp.setId(appId);
+        reviseApp.setDeployKey(deployKey);
+        reviseApp.setDeployStatus(AppDeployStatusEnum.DEPLOYED.getValue());
+        reviseApp.setDeployedTime(LocalDateTime.now());
+        boolean result = this.updateById(reviseApp);
+        if (!result) {
+            App temp = new App();
+            temp.setId(appId);
+            temp.setDeployStatus(AppDeployStatusEnum.DEPLOY_FAIL.getValue());
+            this.updateById(temp);
+            ThrowUtils.throwIf(true, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
+        }
+        
+        String deployUrl = String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
+        generateAppScreenshotAsync(appId, deployUrl);
+        return deployUrl;
     }
 
     @Override
@@ -157,15 +175,15 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         BeanUtil.copyProperties(appAddRequest, app);
 
         this.validApp(app, true);
-
-        app.setCodeGeneratorType(CodeGenerateTypeEnum.VUE_PROJECT.getValue());
-        app.setUserId(loginUser.getId());
         String initPrompt = appAddRequest.getInitPrompt();
+        CodeGenerateTypeEnum codeType = aiCodeGenerateTypeRoutingService.generateRouteCodeType(initPrompt);
+        app.setCodeGeneratorType(codeType.getValue());
+        app.setUserId(loginUser.getId());
+
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
         boolean result = this.save(app);
 
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-
         asyncGenerateProjectInfo(app);
 
         return app.getId();
@@ -258,6 +276,18 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     @Override
+    public void generateAppScreenshotAsync(Long appId, String appUrl) {
+        Thread.startVirtualThread(() -> {
+            String url = screenshotService.generateAndSaveScreenshot(appUrl);
+            App reviseApp = new App();
+            reviseApp.setId(appId);
+            reviseApp.setCover(url);
+            boolean result = this.updateById(reviseApp);
+            ThrowUtils.throwIf(!result,ErrorCode.OPERATION_ERROR,"更新应用封面失败");
+        });
+    }
+
+    @Override
     public boolean removeById(Serializable id) {
         if (id == null) return false;
         long appId = Long.parseLong(id.toString());
@@ -288,23 +318,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     }
 
     /**
-     * 异步线程创建项目信息
+     * 虚拟线程异步创建项目信息
      *
      * @param app 应用信息
      */
-    @Async("aiExecutor")
-    public void asyncGenerateProjectInfo(App app) {
-        try {
+    private void asyncGenerateProjectInfo(App app) {
+        Thread.startVirtualThread(() -> {
             String userMessage = app.getInitPrompt();
             ProjectInfoResult info = aiCodeGenerateFacade.generateProjectInfo(app.getId(), userMessage);
-
+            ThrowUtils.throwIf(info == null, ErrorCode.SYSTEM_ERROR, "生成项目信息失败");
             App reviseApp = new App();
             reviseApp.setId(app.getId());
             reviseApp.setAppName(info.getName());
             reviseApp.setTags(info.getTags());
             this.updateById(reviseApp);
-        } catch (Exception e) {
-            log.error("生成项目信息失败: {}", e.getMessage());
-        }
+        });
     }
 }

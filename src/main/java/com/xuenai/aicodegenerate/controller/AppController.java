@@ -7,6 +7,7 @@ import com.xuenai.aicodegenerate.annotation.AuthCheck;
 import com.xuenai.aicodegenerate.common.BaseResponse;
 import com.xuenai.aicodegenerate.common.DeleteRequest;
 import com.xuenai.aicodegenerate.common.ResultUtils;
+import com.xuenai.aicodegenerate.constant.AppConstant;
 import com.xuenai.aicodegenerate.constant.UserConstant;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
@@ -16,15 +17,18 @@ import com.xuenai.aicodegenerate.model.entity.App;
 import com.xuenai.aicodegenerate.model.entity.User;
 import com.xuenai.aicodegenerate.model.vo.app.AppVO;
 import com.xuenai.aicodegenerate.service.AppService;
+import com.xuenai.aicodegenerate.service.ProjectDownloadService;
 import com.xuenai.aicodegenerate.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -42,6 +46,9 @@ public class AppController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private ProjectDownloadService projectDownloadService;
 
     /**
      * 用户对话并生成应用
@@ -63,8 +70,7 @@ public class AppController {
             return ServerSentEvent.<String>builder().data(json).build();
         }).concatWith(
                 // 发送结束事件
-                Mono.just(ServerSentEvent.<String>builder().event("done").data("").build())
-        );
+                Mono.just(ServerSentEvent.<String>builder().event("done").data("").build()));
     }
 
     /**
@@ -83,6 +89,32 @@ public class AppController {
         String deploy = appService.deployApp(appId, loginUser);
         return ResultUtils.success(deploy);
     }
+
+    /**
+     * 下载应用代码
+     *
+     * @param appId    应用ID
+     * @param request  请求
+     * @param response 响应
+     */
+    @GetMapping("/download/{appId}")
+    public void downloadAppCode(@PathVariable Long appId, HttpServletRequest request, HttpServletResponse response) {
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用ID无效");
+        App app = appService.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        User loginUser = userService.getLoginUser(request);
+        if (!app.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权限下载该应用代码");
+        }
+        String codeGenType = app.getCodeGeneratorType();
+        String sourceDirName = codeGenType + "_" + appId;
+        String sourceDirPath = AppConstant.CODE_OUTPUT_ROOT_DIR + File.separator + sourceDirName;
+        File sourceDir = new File(sourceDirPath);
+        ThrowUtils.throwIf(!sourceDir.exists() || !sourceDir.isDirectory(), ErrorCode.NOT_FOUND_ERROR, "应用代码不存在，请先生成代码");
+        String downloadFileName = String.valueOf(appId);
+        projectDownloadService.downloadProjectAsZip(sourceDirPath, downloadFileName, response);
+    }
+
 
     /**
      * 创建应用

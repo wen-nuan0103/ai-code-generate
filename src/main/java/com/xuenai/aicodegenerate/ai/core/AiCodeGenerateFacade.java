@@ -3,6 +3,7 @@ package com.xuenai.aicodegenerate.ai.core;
 import cn.hutool.json.JSONUtil;
 import com.xuenai.aicodegenerate.ai.AiCodeGenerateService;
 import com.xuenai.aicodegenerate.ai.AiCodeGenerateServiceFactor;
+import com.xuenai.aicodegenerate.ai.AiProjectInfoService;
 import com.xuenai.aicodegenerate.ai.mode.message.AiResponseMessage;
 import com.xuenai.aicodegenerate.ai.mode.message.ToolExecutedMessage;
 import com.xuenai.aicodegenerate.ai.mode.message.ToolRequestMessage;
@@ -33,6 +34,9 @@ public class AiCodeGenerateFacade {
 
     @Resource
     private AiCodeGenerateServiceFactor aiCodeGenerateServiceFactor;
+    
+    @Resource
+    private AiProjectInfoService aiProjectInfoService;
 
     /**
      * 统一对外提供的方法，生成并保存文件
@@ -74,7 +78,7 @@ public class AiCodeGenerateFacade {
     public Flux<String> generateStreamAndSaveCode(String userMessage, CodeGenerateTypeEnum typeEnum, Long appId) {
         if (typeEnum == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不能为空");
-        }
+        }   
         AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactor.getAiCodeGeneratorService(appId,typeEnum);
         return switch (typeEnum) {
             case HTML -> {
@@ -103,7 +107,7 @@ public class AiCodeGenerateFacade {
      * @return 项目信息
      */
     public ProjectInfoResult generateProjectInfo(long appId, String userMessage) {
-        return aiCodeGenerateServiceFactor.getAiCodeGeneratorService(appId).generateProjectInfo(userMessage);
+        return aiProjectInfoService.generateProjectInfo("project_info_" + appId, userMessage);
     }
 
     /**

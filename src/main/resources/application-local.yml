@@ -8,8 +8,8 @@ langchain4j:
       max-tokens: 8192
       log-requests: true
       log-responses: true
-      strict-json-schema: true
-      response-format: json_object
+#      strict-json-schema: true
+#      response-format: json_object
     streaming-chat-model:
       base-url: https://api.deepseek.com
       api-key: sk-35c26f9bec814f229a5cc80768a57ce9
@@ -17,3 +17,11 @@ langchain4j:
       max-tokens: 8192
       log-requests: true
       log-responses: true
+# COS
+cos:
+  client:
+    host: https://ai-auto-generate-1312832052.cos.ap-guangzhou.myqcloud.com
+    secretId: AKIDa6UhjY9Xkmex8A0scO0UmuuiNsBLJ4c0
+    secretKey: HMHzWXO4b6ScZLuNdlqobVCgz50kiZt5
+    region: ap-guangzhou
+    bucket: ai-auto-generate-1312832052

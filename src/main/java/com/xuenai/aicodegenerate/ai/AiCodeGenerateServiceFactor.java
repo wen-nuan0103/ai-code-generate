@@ -41,6 +41,7 @@ public class AiCodeGenerateServiceFactor {
     @Resource
     private ChatHistoryService chatHistoryService;
 
+
     /**
      * AI 服务实例缓存
      * 缓存策略
@@ -91,9 +92,9 @@ public class AiCodeGenerateServiceFactor {
      * @return ai 生成服务类
      */
     private AiCodeGenerateService createAiCodeGeneratorService(long appId, CodeGenerateTypeEnum generateType) {
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder().id(appId).chatMemoryStore(customRedisChatMemoryStore).maxMessages(30).build();
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder().id(appId).chatMemoryStore(customRedisChatMemoryStore).maxMessages(100).build();
         // 加载历史对话到记忆中
-        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 30);
+        chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 100);
         return switch (generateType) {
             case VUE_PROJECT ->
                     AiServices.builder(AiCodeGenerateService.class).streamingChatModel(reasoningStreamingChatModel).chatMemoryProvider(memoryId -> chatMemory).tools(new FileWriteTool()).hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tol called " + toolExecutionRequest.name())).build();

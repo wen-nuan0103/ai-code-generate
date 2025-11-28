@@ -3,6 +3,9 @@ spring:
     name: ai-code
   profiles:
     active: local
+  threads:
+    virtual:
+      enabled: true
   session:
     store-type: redis
     # 30天
@@ -19,6 +22,11 @@ spring:
       port: 6379
       db: 1
       ttl: 3600
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin
 server:
   port: 8123
   servlet:
@@ -26,6 +34,10 @@ server:
     session:
       cookie:
         max-age: 2592000
+screenshot:
+  pool-size: 5
+  browser-width: 1600
+  browser-height: 900
 # springdoc-openapi项目配置
 springdoc:
   group-configs:
