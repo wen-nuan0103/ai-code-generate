@@ -1,6 +1,5 @@
 package com.xuenai.aicodegenerate.ai.handler;
 
-import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -9,6 +8,8 @@ import com.xuenai.aicodegenerate.ai.mode.message.AiResponseMessage;
 import com.xuenai.aicodegenerate.ai.mode.message.StreamMessage;
 import com.xuenai.aicodegenerate.ai.mode.message.ToolExecutedMessage;
 import com.xuenai.aicodegenerate.ai.mode.message.ToolRequestMessage;
+import com.xuenai.aicodegenerate.ai.tools.BaseTool;
+import com.xuenai.aicodegenerate.ai.tools.ToolManage;
 import com.xuenai.aicodegenerate.constant.AppConstant;
 import com.xuenai.aicodegenerate.model.entity.User;
 import com.xuenai.aicodegenerate.model.enums.ChatHistoryMessageTypeEnum;
@@ -29,6 +30,9 @@ import java.util.Set;
 @Slf4j
 @Component
 public class JsonMessageStreamHandler {
+    
+    @Resource
+    private ToolManage toolManage;
     
     @Resource
     private VueProjectBuilder vueProjectBuilder;
@@ -75,9 +79,11 @@ public class JsonMessageStreamHandler {
             case TOOL_REQUEST -> {
                 ToolRequestMessage toolRequestMessage = JSONUtil.toBean(chunk, ToolRequestMessage.class);
                 String toolId = toolRequestMessage.getId();
+                String toolName = toolRequestMessage.getName();
                 if (toolId != null && !seenToolIds.contains(toolId)) {
                     seenToolIds.add(toolId);
-                    return "\n\n[选择工具] 写入文件\n\n";
+                    BaseTool tool = toolManage.getTool(toolName);
+                    return tool.generateToolRequestResponse();
                 } else {
                     return "";
                 }
@@ -85,15 +91,9 @@ public class JsonMessageStreamHandler {
             case TOOL_EXECUTED -> {
                 ToolExecutedMessage toolExecutedMessage = JSONUtil.toBean(chunk, ToolExecutedMessage.class);
                 JSONObject jsonObject = JSONUtil.parseObj(toolExecutedMessage.getArguments());
-                String relativeFilePath = jsonObject.getStr("relativePath");
-                String suffix = FileUtil.getSuffix(relativeFilePath);
-                String content = jsonObject.getStr("content");
-                String result = String.format("""
-                        [工具调用] 写入文件 %s
-                        ```%s
-                        %s
-                        ```
-                        """, relativeFilePath, suffix, content);
+                String toolName = toolExecutedMessage.getName();
+                BaseTool tool = toolManage.getTool(toolName);
+                String result = tool.generateToolExecutedResult(jsonObject);
                 String output = String.format("\n\n%s\n\n", result);
                 chatHistoryStringBuilder.append(output);
                 return output;

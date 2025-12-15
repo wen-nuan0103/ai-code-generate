@@ -1,9 +1,12 @@
 package com.xuenai.aicodegenerate.ai.tools;
 
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.json.JSONObject;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,7 +19,8 @@ import static com.xuenai.aicodegenerate.constant.AppConstant.CODE_OUTPUT_ROOT_DI
  * 文件写入工具类
  */
 @Slf4j
-public class FileWriteTool {
+@Component
+public class FileWriteTool extends BaseTool {
 
     /**
      * 写入文件到指定路径
@@ -39,7 +43,7 @@ public class FileWriteTool {
             if (parentPath != null) {
                 Files.createDirectories(parentPath);
             }
-            Files.write(path, content.getBytes(), StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
+            Files.write(path, content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             log.info("成功写入文件: {}", path.toAbsolutePath());
             return "文件写入成功: " + relativePath;
         } catch (Exception e) {
@@ -47,5 +51,28 @@ public class FileWriteTool {
             log.error(errorMessage, e);
             return errorMessage;
         }
+    }
+
+    @Override
+    public String getToolName() {
+        return "writeFile";
+    }
+
+    @Override
+    public String getDisplayName() {
+        return "文件读取";
+    }
+
+    @Override
+    public String generateToolExecutedResult(JSONObject arguments) {
+        String relativeFilePath = arguments.getStr("relativeFilePath");
+        String suffix = FileUtil.getSuffix(relativeFilePath);
+        String content = arguments.getStr("content");
+        return String.format("""
+                [工具调用] %s %s
+                ```%s
+                %s
+                ```
+                """, getDisplayName(), relativeFilePath, suffix, content);
     }
 }

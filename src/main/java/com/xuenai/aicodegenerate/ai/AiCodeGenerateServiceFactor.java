@@ -2,7 +2,7 @@ package com.xuenai.aicodegenerate.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.xuenai.aicodegenerate.ai.tools.FileWriteTool;
+import com.xuenai.aicodegenerate.ai.tools.*;
 import com.xuenai.aicodegenerate.custom.CustomRedisChatMemoryStore;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
@@ -40,6 +40,9 @@ public class AiCodeGenerateServiceFactor {
 
     @Resource
     private ChatHistoryService chatHistoryService;
+    
+    @Resource
+    private ToolManage toolManage;
 
 
     /**
@@ -97,7 +100,7 @@ public class AiCodeGenerateServiceFactor {
         chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 100);
         return switch (generateType) {
             case VUE_PROJECT ->
-                    AiServices.builder(AiCodeGenerateService.class).streamingChatModel(reasoningStreamingChatModel).chatMemoryProvider(memoryId -> chatMemory).tools(new FileWriteTool()).hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tol called " + toolExecutionRequest.name())).build();
+                    AiServices.builder(AiCodeGenerateService.class).streamingChatModel(reasoningStreamingChatModel).chatMemoryProvider(memoryId -> chatMemory).tools(toolManage.getTools()).hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tol called " + toolExecutionRequest.name())).build();
             case HTML, MULTI_FILE ->
                     AiServices.builder(AiCodeGenerateService.class).chatModel(chatModel).streamingChatModel(openAiStreamingChatModel).chatMemory(chatMemory).build();
             default ->
