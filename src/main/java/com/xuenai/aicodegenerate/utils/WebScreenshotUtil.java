@@ -22,7 +22,7 @@ import java.util.UUID;
  * Web截图工具类
  */
 @Slf4j
-public class WebScreenshotUtils {
+public class WebScreenshotUtil {
     
     /**
      * 保存网页截图

@@ -7,7 +7,7 @@ import com.xuenai.aicodegenerate.exception.ThrowUtils;
 import com.xuenai.aicodegenerate.manager.CosManager;
 import com.xuenai.aicodegenerate.pool.WebDriverPool;
 import com.xuenai.aicodegenerate.service.ScreenshotService;
-import com.xuenai.aicodegenerate.utils.WebScreenshotUtils;
+import com.xuenai.aicodegenerate.utils.WebScreenshotUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.WebDriver;
@@ -38,7 +38,7 @@ public class ScreenshotServiceImpl implements ScreenshotService {
         String localScreenshotPath = null;
         try {
             driver = webDriverPool.borrowDriver();
-            localScreenshotPath = WebScreenshotUtils.saveWebScreenshot(driver, webUrl);
+            localScreenshotPath = WebScreenshotUtil.saveWebScreenshot(driver, webUrl);
             ThrowUtils.throwIf(StrUtil.isBlank(localScreenshotPath), ErrorCode.OPERATION_ERROR, "本地截图生成失败");
             String cosUrl = uploadScreenshotToCos(localScreenshotPath);
             ThrowUtils.throwIf(StrUtil.isBlank(cosUrl), ErrorCode.OPERATION_ERROR, "截图上传失败");
