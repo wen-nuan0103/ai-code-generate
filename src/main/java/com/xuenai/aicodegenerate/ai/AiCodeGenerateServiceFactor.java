@@ -2,7 +2,8 @@ package com.xuenai.aicodegenerate.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.xuenai.aicodegenerate.ai.tools.*;
+import com.xuenai.aicodegenerate.ai.service.AiCodeGenerateService;
+import com.xuenai.aicodegenerate.ai.tools.ToolManage;
 import com.xuenai.aicodegenerate.custom.CustomRedisChatMemoryStore;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
@@ -10,11 +11,11 @@ import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 import com.xuenai.aicodegenerate.service.ChatHistoryService;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
@@ -27,12 +28,11 @@ import java.time.Duration;
 public class AiCodeGenerateServiceFactor {
 
     @Resource
-    private ChatModel chatModel;
+    @Qualifier("streamingChatModel")
+    private StreamingChatModel streamingChatModel;
 
     @Resource
-    private StreamingChatModel openAiStreamingChatModel;
-
-    @Resource
+    @Qualifier("reasoningStreamingChatModel")
     private StreamingChatModel reasoningStreamingChatModel;
 
     @Resource
@@ -100,9 +100,17 @@ public class AiCodeGenerateServiceFactor {
         chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 100);
         return switch (generateType) {
             case VUE_PROJECT ->
-                    AiServices.builder(AiCodeGenerateService.class).streamingChatModel(reasoningStreamingChatModel).chatMemoryProvider(memoryId -> chatMemory).tools(toolManage.getTools()).hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tol called " + toolExecutionRequest.name())).build();
+                AiServices.builder(AiCodeGenerateService.class)
+                       .streamingChatModel(reasoningStreamingChatModel)
+                       .chatMemoryProvider(memoryId -> chatMemory)
+                       .tools(toolManage.getTools())
+                       .hallucinatedToolNameStrategy(toolExecutionRequest -> 
+                               ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tol called " + toolExecutionRequest.name())
+                       ).build();
             case HTML, MULTI_FILE ->
-                    AiServices.builder(AiCodeGenerateService.class).chatModel(chatModel).streamingChatModel(openAiStreamingChatModel).chatMemory(chatMemory).build();
+                AiServices.builder(AiCodeGenerateService.class)
+                        .streamingChatModel(streamingChatModel)
+                        .chatMemory(chatMemory).build();
             default ->
                     throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型: " + generateType.getValue());
         };

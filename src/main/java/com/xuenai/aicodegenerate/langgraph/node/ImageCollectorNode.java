@@ -1,6 +1,6 @@
 package com.xuenai.aicodegenerate.langgraph.node;
 
-import com.xuenai.aicodegenerate.ai.ImageCollectionPlanService;
+import com.xuenai.aicodegenerate.ai.service.ImageCollectionPlanService;
 import com.xuenai.aicodegenerate.langgraph.model.dto.ImageCollectionPlan;
 import com.xuenai.aicodegenerate.langgraph.model.dto.ImageResource;
 import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;

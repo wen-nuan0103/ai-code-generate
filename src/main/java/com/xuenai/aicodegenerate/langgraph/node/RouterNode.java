@@ -1,6 +1,6 @@
 package com.xuenai.aicodegenerate.langgraph.node;
 
-import com.xuenai.aicodegenerate.ai.AiCodeGenerateTypeRoutingService;
+import com.xuenai.aicodegenerate.ai.service.AiCodeGenerateTypeRoutingService;
 import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 import com.xuenai.aicodegenerate.utils.SpringContextUtil;

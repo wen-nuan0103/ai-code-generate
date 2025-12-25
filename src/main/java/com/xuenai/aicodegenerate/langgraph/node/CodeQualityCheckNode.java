@@ -2,7 +2,7 @@ package com.xuenai.aicodegenerate.langgraph.node;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
-import com.xuenai.aicodegenerate.ai.CodeQualityCheckService;
+import com.xuenai.aicodegenerate.ai.service.CodeQualityCheckService;
 import com.xuenai.aicodegenerate.langgraph.model.dto.QualityResult;
 import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;
 import com.xuenai.aicodegenerate.utils.SpringContextUtil;

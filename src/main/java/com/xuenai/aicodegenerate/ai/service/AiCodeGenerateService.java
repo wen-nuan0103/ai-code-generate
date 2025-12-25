@@ -1,4 +1,4 @@
-package com.xuenai.aicodegenerate.ai;
+package com.xuenai.aicodegenerate.ai.service;
 
 import com.xuenai.aicodegenerate.ai.mode.result.HtmlCodeResult;
 import com.xuenai.aicodegenerate.ai.mode.result.MultiFileCodeResult;

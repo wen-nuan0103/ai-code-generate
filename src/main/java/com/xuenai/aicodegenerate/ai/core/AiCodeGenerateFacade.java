@@ -1,9 +1,9 @@
 package com.xuenai.aicodegenerate.ai.core;
 
 import cn.hutool.json.JSONUtil;
-import com.xuenai.aicodegenerate.ai.AiCodeGenerateService;
+import com.xuenai.aicodegenerate.ai.service.AiCodeGenerateService;
 import com.xuenai.aicodegenerate.ai.AiCodeGenerateServiceFactor;
-import com.xuenai.aicodegenerate.ai.AiProjectInfoService;
+import com.xuenai.aicodegenerate.ai.service.AiProjectInfoService;
 import com.xuenai.aicodegenerate.ai.mode.message.AiResponseMessage;
 import com.xuenai.aicodegenerate.ai.mode.message.ToolExecutedMessage;
 import com.xuenai.aicodegenerate.ai.mode.message.ToolRequestMessage;

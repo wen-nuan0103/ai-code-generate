@@ -1,4 +1,4 @@
-package com.xuenai.aicodegenerate.ai;
+package com.xuenai.aicodegenerate.ai.service;
 
 import com.xuenai.aicodegenerate.langgraph.model.dto.ImageCollectionPlan;
 import dev.langchain4j.service.SystemMessage;

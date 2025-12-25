@@ -8,7 +8,7 @@ import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.xuenai.aicodegenerate.ai.AiCodeGenerateTypeRoutingService;
+import com.xuenai.aicodegenerate.ai.service.AiCodeGenerateTypeRoutingService;
 import com.xuenai.aicodegenerate.ai.builder.VueProjectBuilder;
 import com.xuenai.aicodegenerate.ai.core.AiCodeGenerateFacade;
 import com.xuenai.aicodegenerate.ai.handler.StreamHandlerExecutor;
