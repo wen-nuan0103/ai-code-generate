@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.xuenai.aicodegenerate.annotation.AuthCheck;
+import com.xuenai.aicodegenerate.annotation.RateLimit;
 import com.xuenai.aicodegenerate.common.BaseResponse;
 import com.xuenai.aicodegenerate.common.DeleteRequest;
 import com.xuenai.aicodegenerate.common.ResultUtils;
@@ -15,6 +16,7 @@ import com.xuenai.aicodegenerate.exception.ThrowUtils;
 import com.xuenai.aicodegenerate.model.dto.app.*;
 import com.xuenai.aicodegenerate.model.entity.App;
 import com.xuenai.aicodegenerate.model.entity.User;
+import com.xuenai.aicodegenerate.model.enums.RateLimitTypeEnum;
 import com.xuenai.aicodegenerate.model.vo.app.AppVO;
 import com.xuenai.aicodegenerate.service.AppService;
 import com.xuenai.aicodegenerate.service.ProjectDownloadService;
@@ -59,6 +61,7 @@ public class AppController {
      * @param request     请求
      * @return 流式输出结果
      */
+    @RateLimit(limitType = RateLimitTypeEnum.USER, rate = 5, rateInterval = 60,message = "AI 对话请求过于评分,请稍后再试")
     @GetMapping(value = "/chat/generate/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> chat(@RequestParam Long appId, @RequestParam String userMessage, HttpServletRequest request) {
         ThrowUtils.throwIf(appId == null || appId < 0, ErrorCode.PARAMS_ERROR, "应用 ID 错误");

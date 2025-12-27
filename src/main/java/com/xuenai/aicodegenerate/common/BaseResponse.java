@@ -2,6 +2,7 @@ package com.xuenai.aicodegenerate.common;
 
 import com.xuenai.aicodegenerate.exception.ErrorCode;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
@@ -10,6 +11,7 @@ import java.io.Serializable;
  * 
  * @param <T>
  */
+@NoArgsConstructor
 @Data
 public class BaseResponse<T> implements Serializable {
 

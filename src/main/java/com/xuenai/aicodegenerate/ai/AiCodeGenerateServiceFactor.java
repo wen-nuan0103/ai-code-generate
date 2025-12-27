@@ -2,6 +2,7 @@ package com.xuenai.aicodegenerate.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.xuenai.aicodegenerate.ai.guardrail.PromptSafetyInputGuardrail;
 import com.xuenai.aicodegenerate.ai.service.AiCodeGenerateService;
 import com.xuenai.aicodegenerate.ai.tools.ToolManage;
 import com.xuenai.aicodegenerate.custom.CustomRedisChatMemoryStore;
@@ -108,14 +109,22 @@ public class AiCodeGenerateServiceFactor {
                        .streamingChatModel(geminiReasoningStreamingChatModel)
                        .chatMemoryProvider(memoryId -> chatMemory)
                        .tools(toolManage.getTools())
+                        .maxSequentialToolsInvocations(30) //连续最多调用30次
                        .hallucinatedToolNameStrategy(toolExecutionRequest -> 
                                ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tol called " + toolExecutionRequest.name())
-                       ).build();
+                       )
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
+                        // 使用输出护轨可能会导致流式输出响应不及时，等到 AI 输出结束一起放回
+//                        .outputGuardrails(new RetryOutputGuardrail())
+                        .build();
             case HTML, MULTI_FILE ->
                 AiServices.builder(AiCodeGenerateService.class)
 //                        .streamingChatModel(streamingChatModel)
                         .streamingChatModel(geminiReasoningStreamingChatModel)
-                        .chatMemory(chatMemory).build();
+                        .chatMemory(chatMemory)
+                        .inputGuardrails(new PromptSafetyInputGuardrail())
+//                        .outputGuardrails(new RetryOutputGuardrail())
+                        .build();
             default ->
                     throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型: " + generateType.getValue());
         };

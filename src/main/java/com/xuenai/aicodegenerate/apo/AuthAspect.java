@@ -18,7 +18,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Aspect
 @Component
-public class AuthInterceptor {
+public class AuthAspect {
     
     @Resource
     private UserService userService;
