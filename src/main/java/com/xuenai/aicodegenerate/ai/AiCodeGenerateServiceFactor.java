@@ -33,7 +33,11 @@ public class AiCodeGenerateServiceFactor {
 
     @Resource
     @Qualifier("reasoningStreamingChatModel")
-    private StreamingChatModel reasoningStreamingChatModel;
+    private StreamingChatModel reasoningStreamingChatModel;    
+    
+    @Resource(name = "geminiReasoningStreamingChatModel")
+    @Qualifier("geminiReasoningStreamingChatModel")
+    private StreamingChatModel geminiReasoningStreamingChatModel;
 
     @Resource
     private CustomRedisChatMemoryStore customRedisChatMemoryStore;
@@ -101,7 +105,7 @@ public class AiCodeGenerateServiceFactor {
         return switch (generateType) {
             case VUE_PROJECT ->
                 AiServices.builder(AiCodeGenerateService.class)
-                       .streamingChatModel(reasoningStreamingChatModel)
+                       .streamingChatModel(geminiReasoningStreamingChatModel)
                        .chatMemoryProvider(memoryId -> chatMemory)
                        .tools(toolManage.getTools())
                        .hallucinatedToolNameStrategy(toolExecutionRequest -> 
@@ -109,7 +113,8 @@ public class AiCodeGenerateServiceFactor {
                        ).build();
             case HTML, MULTI_FILE ->
                 AiServices.builder(AiCodeGenerateService.class)
-                        .streamingChatModel(streamingChatModel)
+//                        .streamingChatModel(streamingChatModel)
+                        .streamingChatModel(geminiReasoningStreamingChatModel)
                         .chatMemory(chatMemory).build();
             default ->
                     throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型: " + generateType.getValue());

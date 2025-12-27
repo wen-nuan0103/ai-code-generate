@@ -19,6 +19,12 @@ public class StreamHandlerExecutor {
     @Resource
     private JsonMessageStreamHandler jsonMessageStreamHandler;
 
+    @Resource
+    private SimpleTextStreamHandler simpleTextStreamHandler;
+
+    @Resource
+    private WorkflowStreamHandler workflowStreamHandler;
+
     /**
      * 创建流处理器并处理聊天历史记录
      *
@@ -31,11 +37,22 @@ public class StreamHandlerExecutor {
      */
     public Flux<String> doExecute(Flux<String> originFlux, ChatHistoryService chatHistoryService, long appId, User loginUser, CodeGenerateTypeEnum generateTypeEnum) {
         return switch (generateTypeEnum) {
-            case VUE_PROJECT -> // 使用注入的组件实例
-                    jsonMessageStreamHandler.handle(originFlux, chatHistoryService, appId, loginUser);
-            case HTML, MULTI_FILE -> // 简单文本处理器不需要依赖注入
-                    new SimpleTextStreamHandler().handle(originFlux, chatHistoryService, appId, loginUser);
+            case VUE_PROJECT -> jsonMessageStreamHandler.handle(originFlux, chatHistoryService, appId, loginUser);
+            case HTML, MULTI_FILE -> simpleTextStreamHandler.handle(originFlux, chatHistoryService, appId, loginUser);
         };
+    }
+
+    /**
+     * 专门处理 LangGraph 工作流的输出
+     * * @param workflowFlux       工作流产生的流
+     *
+     * @param chatHistoryService 聊天历史服务
+     * @param appId              应用ID
+     * @param loginUser          登录用户
+     * @return 处理后的流
+     */
+    public Flux<String> doExecuteWorkflow(Flux<String> workflowFlux, ChatHistoryService chatHistoryService, long appId, User loginUser) {
+        return workflowStreamHandler.handle(workflowFlux, chatHistoryService, appId, loginUser);
     }
 }
 

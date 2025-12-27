@@ -12,6 +12,6 @@ class AiCodeGenerateFacadeTest {
 
     @Test
     void generatorAndSaveCode() {
-
+//        aiCodeGenerateFacade.generateStreamAndSaveCode()
     }
 }

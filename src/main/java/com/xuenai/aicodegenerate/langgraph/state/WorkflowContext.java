@@ -43,6 +43,11 @@ public class WorkflowContext implements Serializable {
     private String originalPrompt;
 
     /**
+     * 应用id
+     */
+    private Long appId;
+
+    /**
      * 图片资源字符串
      */
     private String imageListStr;
@@ -76,12 +81,13 @@ public class WorkflowContext implements Serializable {
      * 错误信息
      */
     private String errorMessage;
-    
+
     /**
      * 重试次数
      */
-    private Integer RetryCount;
-    
+    @Builder.Default
+    private Integer retryCount = 0;
+
     /**
      * 质量检查结果
      */
@@ -91,7 +97,7 @@ public class WorkflowContext implements Serializable {
      * 图片收集计划
      */
     private ImageCollectionPlan imageCollectionPlan;
-    
+
     /**
      * 并发图片收集的中间结果字段
      */

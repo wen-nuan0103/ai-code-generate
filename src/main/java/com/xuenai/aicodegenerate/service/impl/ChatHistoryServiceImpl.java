@@ -56,6 +56,11 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
 
     @Override
     public boolean createChatHistory(Long appId, Long userId, String message, String messageType) {
+        return this.createChatHistoryWithThinking(appId, userId, message, null, messageType);
+    }
+
+    @Override
+    public boolean createChatHistoryWithThinking(Long appId, Long userId, String message, String thinkingMessage, String messageType) {
         ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
         ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR, "用户 ID 不能为空");
         ThrowUtils.throwIf(StrUtil.isBlank(message), ErrorCode.PARAMS_ERROR, "消息内容不能为空");
@@ -65,7 +70,7 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         ThrowUtils.throwIf(typeEnum == null, ErrorCode.PARAMS_ERROR, "不支持的消息类型: " + messageType);
 
         // TODO 关联条件 PARTNER_ID
-        ChatHistory chatHistory = ChatHistory.builder().appId(appId).userId(userId).message(message).messageType(typeEnum.getValue()).build();
+        ChatHistory chatHistory = ChatHistory.builder().appId(appId).userId(userId).thinkingContent(thinkingMessage).message(message).messageType(typeEnum.getValue()).build();
         return this.save(chatHistory);
     }
 
@@ -222,6 +227,12 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
         }
 
         return sb.toString();
+    }
+
+    @Override
+    public Long countByAppId(Long appId) {
+        QueryWrapper queryWrapper = QueryWrapper.create().eq("app_id", appId);
+        return this.count(queryWrapper);
     }
 
 

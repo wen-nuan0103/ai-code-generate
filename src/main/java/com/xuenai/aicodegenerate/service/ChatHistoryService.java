@@ -31,6 +31,18 @@ public interface ChatHistoryService extends IService<ChatHistory> {
 
 
     /**
+     * 创建包含思考过程的聊天记录
+     *
+     * @param appId           应用ID
+     * @param userId          用户ID
+     * @param message         正文内容（最终代码/回复）
+     * @param thinkingMessage 思考过程（JSON字符串）
+     * @param messageType     消息类型
+     * @return 是否成功
+     */
+    boolean createChatHistoryWithThinking(Long appId, Long userId, String message, String thinkingMessage, String messageType);
+    
+    /**
      * 根据应用 ID 删除对话历史
      *
      * @param appId 应用 ID
@@ -75,4 +87,11 @@ public interface ChatHistoryService extends IService<ChatHistory> {
      * @return Markdown 文本
      */
     String exportChatToMarkdown(Long appId, User loginUser);
+
+    /**
+     * 根据应用 ID 获取对话历史数量
+     * @param appId 应用 ID
+     * @return 对话历史数量
+     */
+    Long countByAppId(Long appId);
 }

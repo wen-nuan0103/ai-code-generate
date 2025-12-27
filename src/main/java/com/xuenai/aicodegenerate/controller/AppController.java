@@ -22,6 +22,7 @@ import com.xuenai.aicodegenerate.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -229,6 +230,12 @@ public class AppController {
      * @param appQueryRequest 查询请求
      * @return 应用列表
      */
+    @Cacheable(
+            value = "good_app_page",
+            // SPEL 表达式
+            key = "T(com.xuenai.aicodegenerate.utils.CacheKeyUtil).generateKey(#appQueryRequest)",
+            condition = "#appQueryRequest.pageNum <= 10"
+    )
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<AppVO>> listAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);

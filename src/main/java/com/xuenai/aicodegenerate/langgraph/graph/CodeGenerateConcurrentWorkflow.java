@@ -2,17 +2,25 @@ package com.xuenai.aicodegenerate.langgraph.graph;
 
 import cn.hutool.core.thread.ExecutorBuilder;
 import cn.hutool.core.thread.ThreadFactoryBuilder;
+import cn.hutool.json.JSONUtil;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
+import com.xuenai.aicodegenerate.langgraph.helper.WorkflowStreamHelper;
 import com.xuenai.aicodegenerate.langgraph.model.dto.QualityResult;
 import com.xuenai.aicodegenerate.langgraph.node.*;
 import com.xuenai.aicodegenerate.langgraph.node.concurrent.*;
 import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.bsc.langgraph4j.*;
+import org.bsc.langgraph4j.CompiledGraph;
+import org.bsc.langgraph4j.GraphStateException;
+import org.bsc.langgraph4j.NodeOutput;
+import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.bsc.langgraph4j.prebuilt.MessagesStateGraph;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -23,8 +31,12 @@ import static org.bsc.langgraph4j.StateGraph.START;
 import static org.bsc.langgraph4j.action.AsyncEdgeAction.edge_async;
 
 @Slf4j
+@Component
 public class CodeGenerateConcurrentWorkflow {
 
+    @Resource
+    private WorkflowStreamHelper workflowStreamHelper;
+    
     /**
      * 创建并发工作流
      */
@@ -43,7 +55,7 @@ public class CodeGenerateConcurrentWorkflow {
                     .addNode("diagram_collector", DiagramCollectorNode.create())
                     .addNode("logo_collector", LogoCollectorNode.create())
                     .addNode("image_aggregator", ImageAggregatorNode.create())
-                    
+
                     .addEdge(START, "image_plan")
                     .addEdge("image_plan", "content_image_collector")
                     .addEdge("image_plan", "illustration_collector")
@@ -72,42 +84,81 @@ public class CodeGenerateConcurrentWorkflow {
     }
 
     /**
-     * 执行并发工作流
+     * 执行并发工作流 (Flux 流式返回)
+     *
+     * @param appId          应用 ID
+     * @param originalPrompt 原始提示词
+     * @return 包含进度信息的流
      */
-    public WorkflowContext executeWorkflow(String originalPrompt) {
-        CompiledGraph<MessagesState<String>> workflow = createWorkflow();
-        WorkflowContext initialContext = WorkflowContext.builder()
-                .originalPrompt(originalPrompt)
-                .currentStep("初始化")
-                .build();
-        GraphRepresentation graph = workflow.getGraph(GraphRepresentation.Type.MERMAID);
-        log.info("并发工作流图:\n{}", graph.content());
-        log.info("开始执行并发代码生成工作流");
-        WorkflowContext finalContext = null;
-        int stepCounter = 1;
-        // 配置并发执行
-        ExecutorService pool = ExecutorBuilder.create()
-                .setCorePoolSize(10)
-                .setMaxPoolSize(20)
-                .setWorkQueue(new LinkedBlockingQueue<>(100))
-                .setThreadFactory(ThreadFactoryBuilder.create().setNamePrefix("Parallel-Image-Collect").build())
-                .build();
-        RunnableConfig runnableConfig = RunnableConfig.builder()
-                .addParallelNodeExecutor("image_plan", pool)
-                .build();
-        for (NodeOutput<MessagesState<String>> step : workflow.stream(
-                Map.of(WorkflowContext.WORKFLOW_CONTEXT_KEY, initialContext),
-                runnableConfig)) {
-            log.info("--- 第 {} 步完成 ---", stepCounter);
-            WorkflowContext currentContext = WorkflowContext.getContext(step.state());
-            if (currentContext != null) {
-                finalContext = currentContext;
-                log.info("当前步骤上下文: {}", currentContext);
-            }
-            stepCounter++;
-        }
-        log.info("并发代码生成工作流执行完成！");
-        return finalContext;
+    public Flux<String> executeWorkflowFlux(Long appId, String originalPrompt) {
+        return Flux.create(sink -> {
+             workflowStreamHelper.register(appId,sink);
+             Thread.startVirtualThread(() -> {
+                try {
+                    CompiledGraph<MessagesState<String>> workflow = createWorkflow();
+                    WorkflowContext initialContext = WorkflowContext.builder()
+                            .appId(appId)
+                            .originalPrompt(originalPrompt)
+                            .currentStep("初始化工作流")
+                            .build();
+
+                    sink.next(formatProgress("start", "开始分析需求并规划工作流...", 0));
+
+                    // 配置并发执行器
+                    ExecutorService pool = ExecutorBuilder.create()
+                            .setCorePoolSize(10)
+                            .setMaxPoolSize(20)
+                            .setWorkQueue(new LinkedBlockingQueue<>(100))
+                            .setThreadFactory(ThreadFactoryBuilder.create().setNamePrefix("Parallel-Image-Collect").build())
+                            .build();
+                    RunnableConfig runnableConfig = RunnableConfig.builder()
+                            .addParallelNodeExecutor("image_plan", pool)
+                            .build();
+
+                    int stepCounter = 1;
+                    for (NodeOutput<MessagesState<String>> step : workflow.stream(
+                            Map.of(WorkflowContext.WORKFLOW_CONTEXT_KEY, initialContext),
+                            runnableConfig)) {
+                        WorkflowContext currentContext = WorkflowContext.getContext(step.state());
+                        String nodeName = step.node();
+                        log.info("--- 第 {} 步完成: {} ---", stepCounter, nodeName);
+                        
+                        if (!"code_generator".equals(nodeName)) {
+                            String displayMsg = String.format("步骤 [%s] 执行完成", nodeName);
+                            if (currentContext != null && currentContext.getCurrentStep() != null) {
+                                displayMsg = currentContext.getCurrentStep();
+                            }
+                            sink.next(formatProgress("processing", displayMsg, stepCounter));
+                        } else {
+                            sink.next(formatProgress("processing", "代码生成完毕，进行质检...", stepCounter));
+                        }
+                        stepCounter++;
+                    }
+                    sink.next(formatProgress("finish", "工作流执行完毕！", stepCounter));
+                    log.info("并发代码生成工作流执行完成！");
+                    sink.complete();
+                } catch (Exception e) {
+                    log.error("工作流执行失败: {}", e.getMessage(), e);
+                    sink.next(formatProgress("error", "执行失败: " + e.getMessage(), -1));
+                    sink.error(e);
+                } finally {
+                    workflowStreamHelper.remove(appId);
+                }
+             });
+        });
+    }
+
+    /**
+     * 格式化进度消息为 JSON 字符串
+     * 前端接收逻辑: response.d -> JSON.parse -> { type, content, step }
+     */
+    private String formatProgress(String type,String content,int step) {
+        Map<String,Object> map = Map.of(
+                "type",type,
+                "content",content,
+                "step",step
+        );
+        return JSONUtil.toJsonStr(map);
     }
 
     /**
@@ -120,7 +171,7 @@ public class CodeGenerateConcurrentWorkflow {
         WorkflowContext context = WorkflowContext.getContext(state);
         QualityResult qualityResult = context.getQualityResult();
 
-        int currentRetry = context.getRetryCount();
+        int currentRetry = context.getRetryCount() == null ? 0 : context.getRetryCount();
         int maxRetries = 3;
 
         if (qualityResult == null || !qualityResult.getIsValid()) {
@@ -135,6 +186,7 @@ public class CodeGenerateConcurrentWorkflow {
         }
 
         log.info("代码质检通过，继续后续流程");
+        context.setRetryCount(0);
         return routeBuildOrSkip(state);
     }
 

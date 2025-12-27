@@ -17,6 +17,7 @@ import com.xuenai.aicodegenerate.constant.AppConstant;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
 import com.xuenai.aicodegenerate.exception.ThrowUtils;
+import com.xuenai.aicodegenerate.langgraph.graph.CodeGenerateConcurrentWorkflow;
 import com.xuenai.aicodegenerate.mapper.AppMapper;
 import com.xuenai.aicodegenerate.model.dto.app.AppAddRequest;
 import com.xuenai.aicodegenerate.model.dto.app.AppQueryRequest;
@@ -53,8 +54,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
-
-
+    
     @Resource
     private AiCodeGenerateFacade aiCodeGenerateFacade;
 
@@ -69,6 +69,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     
     @Resource
     private ScreenshotService screenshotService;
+    
+    @Resource
+    private CodeGenerateConcurrentWorkflow codeGenerateConcurrentWorkflow;
 
     @Resource
     private StreamHandlerExecutor streamHandlerExecutor;
@@ -90,12 +93,18 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         CodeGenerateTypeEnum generatorTypeEnum = CodeGenerateTypeEnum.getEnumByValue(type);
         ThrowUtils.throwIf(generatorTypeEnum == null, ErrorCode.PARAMS_ERROR, "应用代码生成类型错误");
 
+        long historyCount = chatHistoryService.countByAppId(appId);
         chatHistoryService.createChatHistory(appId, loginUser.getId(), message, ChatHistoryMessageTypeEnum.USER.getValue());
 
-        Flux<String> stream = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
-
-        return streamHandlerExecutor.doExecute(stream, chatHistoryService, appId, loginUser, generatorTypeEnum);
-
+        boolean isFirstCreation = (historyCount == 0);
+        
+        if (isFirstCreation) {
+            Flux<String> workflowFlux = codeGenerateConcurrentWorkflow.executeWorkflowFlux(appId, message);
+            return streamHandlerExecutor.doExecuteWorkflow(workflowFlux, chatHistoryService, appId, loginUser);
+        } else {
+            Flux<String> stream = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
+            return streamHandlerExecutor.doExecute(stream, chatHistoryService, appId, loginUser, generatorTypeEnum);
+        }
     }
 
     @Override

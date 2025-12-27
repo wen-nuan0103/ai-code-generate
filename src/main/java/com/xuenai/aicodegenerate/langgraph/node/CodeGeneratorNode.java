@@ -2,6 +2,9 @@ package com.xuenai.aicodegenerate.langgraph.node;
 
 import com.xuenai.aicodegenerate.ai.core.AiCodeGenerateFacade;
 import com.xuenai.aicodegenerate.constant.AppConstant;
+import com.xuenai.aicodegenerate.exception.BusinessException;
+import com.xuenai.aicodegenerate.exception.ErrorCode;
+import com.xuenai.aicodegenerate.langgraph.helper.WorkflowStreamHelper;
 import com.xuenai.aicodegenerate.langgraph.model.dto.QualityResult;
 import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
@@ -32,13 +35,23 @@ public class CodeGeneratorNode {
             CodeGenerateTypeEnum generationType = context.getGenerationType();
             // 获取 AI 代码生成外观服务
             AiCodeGenerateFacade codeGeneratorFacade = SpringContextUtil.getBean(AiCodeGenerateFacade.class);
+            WorkflowStreamHelper streamHelper = SpringContextUtil.getBean(WorkflowStreamHelper.class);
             log.info("开始生成代码，类型: {} ({})", generationType.getValue(), generationType.getText());
-            // 先使用固定的 appId (后续再整合到业务中)
-            Long appId = 0L;
+            Long appId = context.getAppId();
+            if (appId == null) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "工作流上下文丢失 appId");
+            }
             // 调用流式代码生成
             Flux<String> codeStream = codeGeneratorFacade.generateStreamAndSaveCode(userMessage, generationType, appId);
-            // 同步等待流式输出完成
-            codeStream.blockLast(Duration.ofMinutes(10)); // 最多等待 10 分钟
+            try {
+                codeStream.doOnNext(chunk -> {
+                    streamHelper.sendChunk(appId, chunk);
+                }).blockLast(Duration.ofMinutes(15));
+                log.info("AI 代码生成并推送完毕");
+            } catch (Exception e) {
+                log.error("代码生成流执行异常", e);
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "代码生成失败: " + e.getMessage());
+            }
             // 根据类型设置生成目录
             String generatedCodeDir = String.format("%s/%s_%s", AppConstant.CODE_OUTPUT_ROOT_DIR, generationType.getValue(), appId);
             log.info("AI 代码生成完成，生成目录: {}", generatedCodeDir);

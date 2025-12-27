@@ -33,8 +33,10 @@ public class AiModelConfig {
         return buildStreamingChatModel(properties.getStreaming());
     }
     
+
     @Bean("reasoningStreamingChatModel")
     public StreamingChatModel reasoningStreamingChatModel() {
+    // 使用配置属性中的推理参数构建并返回流式聊天模型
         return buildStreamingChatModel(properties.getReasoning());
     }
 

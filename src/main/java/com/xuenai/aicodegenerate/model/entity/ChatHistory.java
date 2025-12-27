@@ -36,6 +36,11 @@ public class ChatHistory implements Serializable {
     private Long id;
 
     /**
+     * 思考过程
+     */
+    private String thinkingContent;
+
+    /**
      * 消息
      */
     private String message;
