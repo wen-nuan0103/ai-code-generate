@@ -19,6 +19,7 @@ spring:
   data:
     redis:
       host: localhost
+      password:
       port: 6379
       db: 1
       ttl: 3600

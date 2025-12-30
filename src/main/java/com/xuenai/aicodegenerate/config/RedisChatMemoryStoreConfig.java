@@ -28,11 +28,19 @@ public class RedisChatMemoryStoreConfig {
 
     @Bean
     public CustomRedisChatMemoryStore customRedisChatMemoryStore() {
-        return CustomRedisChatMemoryStore.builder().host(host).port(port).username(username).password(password).db(db).prefix(prefix).ttl(ttl).build();
+        CustomRedisChatMemoryStore.CustomRedisChatMemoryStoreBuilder builder = CustomRedisChatMemoryStore.builder().host(host).port(port).username(username).db(db).prefix(prefix).ttl(ttl);
+        if (password != null && !password.isEmpty()) {
+            builder.password(password);
+        }
+        return builder.build();
     }
 
     @Bean
     public RedisChatMemoryStore redisChatMemoryStore() {
-        return RedisChatMemoryStore.builder().host(host).port(port).password(password).ttl(ttl).build();
+        RedisChatMemoryStore.Builder builder = RedisChatMemoryStore.builder().host(host).port(port).ttl(ttl);
+        if (password != null && !password.isEmpty()) {
+            builder.password(password);
+        }
+        return builder.build();
     }
 }
