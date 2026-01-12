@@ -8,11 +8,11 @@ import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.xuenai.aicodegenerate.ai.service.AiCodeGenerateTypeRoutingService;
 import com.xuenai.aicodegenerate.ai.builder.VueProjectBuilder;
 import com.xuenai.aicodegenerate.ai.core.AiCodeGenerateFacade;
 import com.xuenai.aicodegenerate.ai.handler.StreamHandlerExecutor;
 import com.xuenai.aicodegenerate.ai.mode.result.ProjectInfoResult;
+import com.xuenai.aicodegenerate.ai.service.AiCodeGenerateTypeRoutingService;
 import com.xuenai.aicodegenerate.constant.AppConstant;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
@@ -28,6 +28,8 @@ import com.xuenai.aicodegenerate.model.enums.ChatHistoryMessageTypeEnum;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 import com.xuenai.aicodegenerate.model.vo.app.AppVO;
 import com.xuenai.aicodegenerate.model.vo.user.UserVO;
+import com.xuenai.aicodegenerate.monitor.MonitorContext;
+import com.xuenai.aicodegenerate.monitor.MonitorContextHolder;
 import com.xuenai.aicodegenerate.service.AppService;
 import com.xuenai.aicodegenerate.service.ChatHistoryService;
 import com.xuenai.aicodegenerate.service.ScreenshotService;
@@ -96,14 +98,27 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         long historyCount = chatHistoryService.countByAppId(appId);
         chatHistoryService.createChatHistory(appId, loginUser.getId(), message, ChatHistoryMessageTypeEnum.USER.getValue());
 
+        MonitorContextHolder.setContext(
+                MonitorContext.builder()
+                        .userId(String.valueOf(loginUser.getId()))
+                        .appId(String.valueOf(appId))
+                        .build()
+        );
+        
         boolean isFirstCreation = (historyCount == 0);
         
         if (isFirstCreation) {
             Flux<String> workflowFlux = codeGenerateConcurrentWorkflow.executeWorkflowFlux(appId, message);
-            return streamHandlerExecutor.doExecuteWorkflow(workflowFlux, chatHistoryService, appId, loginUser);
+            return streamHandlerExecutor.doExecuteWorkflow(workflowFlux, chatHistoryService, appId, loginUser)
+                    .doFinally(signalType -> {
+                        MonitorContextHolder.clearContext();
+                    });
         } else {
             Flux<String> stream = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
-            return streamHandlerExecutor.doExecute(stream, chatHistoryService, appId, loginUser, generatorTypeEnum);
+            return streamHandlerExecutor.doExecute(stream, chatHistoryService, appId, loginUser, generatorTypeEnum)
+                    .doFinally(signalType -> {
+                        MonitorContextHolder.clearContext();
+                    });
         }
     }
 
@@ -263,7 +278,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
         appQueryRequest.setUserId(loginUser.getId());
-        long pageNum = appQueryRequest.getPageNum();
+        long pageNum = appQueryRequest.getCurrent();
         long pageSize = appQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR);
@@ -273,7 +288,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Override
     public Page<AppVO> listAppVOByPage(AppQueryRequest appQueryRequest) {
-        long pageNum = appQueryRequest.getPageNum();
+        long pageNum = appQueryRequest.getCurrent();
         long pageSize = appQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR);

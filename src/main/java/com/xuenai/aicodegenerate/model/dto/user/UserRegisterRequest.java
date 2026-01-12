@@ -26,5 +26,10 @@ public class UserRegisterRequest implements Serializable {
      * 确认密码
      */
     private String checkPassword;
+
+    /**
+     * 邀请码
+     */
+    private String inviteCode;
 }
 

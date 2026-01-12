@@ -15,6 +15,9 @@ import java.io.Serializable;
 @Data
 public class AppQueryRequest extends PageRequest implements Serializable {
 
+
+    private static final long serialVersionUID = 1L;
+    
     /**
      * id
      */
@@ -75,5 +78,4 @@ public class AppQueryRequest extends PageRequest implements Serializable {
      */
     private Long version;
 
-    private static final long serialVersionUID = 1L;
 }

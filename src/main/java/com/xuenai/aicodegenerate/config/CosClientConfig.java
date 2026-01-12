@@ -5,12 +5,17 @@ import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
 import com.qcloud.cos.region.Region;
 import lombok.Data;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Data
 @ConfigurationProperties(prefix = "cos.client")
+@ConditionalOnProperty(
+        prefix = "cos.client",
+        name = {"host", "secretId", "secretKey", "region", "bucket"}
+)
 @Configuration
 public class CosClientConfig {
     

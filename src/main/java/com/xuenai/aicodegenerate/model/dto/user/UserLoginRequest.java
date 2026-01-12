@@ -18,5 +18,10 @@ public class UserLoginRequest implements Serializable {
      * 密码
      */
     private String userPassword;
+
+    /**
+     * 是否管理员登录
+     */
+    private Boolean isAdminLogin = false;
 }
 

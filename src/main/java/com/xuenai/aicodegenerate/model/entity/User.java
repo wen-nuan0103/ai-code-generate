@@ -41,6 +41,11 @@ public class User implements Serializable {
     private String userAccount;
 
     /**
+     * 手机号
+     */
+    private String phone;
+
+    /**
      * 密码
      */
     private String password;
@@ -81,6 +86,11 @@ public class User implements Serializable {
     private Long vipNumber;
 
     /**
+     * 积分
+     */
+    private Long points;
+
+    /**
      * 分享码
      */
     private String shareCode;
@@ -105,6 +115,11 @@ public class User implements Serializable {
      */
     private LocalDateTime updateTime;
 
+    /**
+     * 用户状态
+     */
+    private Integer userStatus;
+    
     /**
      * 是否删除
      */

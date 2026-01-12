@@ -237,7 +237,7 @@ public class AppController {
             value = "good_app_page",
             // SPEL 表达式
             key = "T(com.xuenai.aicodegenerate.utils.CacheKeyUtil).generateKey(#appQueryRequest)",
-            condition = "#appQueryRequest.pageNum <= 10"
+            condition = "#appQueryRequest.current <= 10"
     )
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<AppVO>> listAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
@@ -306,7 +306,7 @@ public class AppController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<AppVO>> listAppVOByPageAdmin(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        long pageNum = appQueryRequest.getPageNum();
+        long pageNum = appQueryRequest.getCurrent();
         long pageSize = appQueryRequest.getPageSize();
         Page<App> appPage = appService.page(Page.of(pageNum, pageSize), appService.getQueryWrapper(appQueryRequest));
         return ResultUtils.success(appService.getAppVOPage(appPage, false));

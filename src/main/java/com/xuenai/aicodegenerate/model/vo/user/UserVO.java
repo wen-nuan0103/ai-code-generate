@@ -39,9 +39,21 @@ public class UserVO implements Serializable {
     private String role;
 
     /**
+     * 是否为VIP用户
+     */
+    private Boolean isVip;
+
+    /**
+     * 用户状态：0-正常，1-禁用
+     */
+    private Integer userStatus;
+    
+    /**
      * 创建时间
      */
     private LocalDateTime createTime;
+    
+    
 
     private static final long serialVersionUID = 1L;
 }

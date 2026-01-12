@@ -2,7 +2,10 @@ package com.xuenai.aicodegenerate.service;
 
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
+import com.xuenai.aicodegenerate.model.dto.user.UserLoginRequest;
 import com.xuenai.aicodegenerate.model.dto.user.UserQueryRequest;
+import com.xuenai.aicodegenerate.model.dto.user.UserRegisterRequest;
+import com.xuenai.aicodegenerate.model.dto.user.UserUpdateRequest;
 import com.xuenai.aicodegenerate.model.entity.User;
 import com.xuenai.aicodegenerate.model.vo.user.LoginUserVO;
 import com.xuenai.aicodegenerate.model.vo.user.UserVO;
@@ -20,23 +23,20 @@ public interface UserService extends IService<User> {
     /**
      * 用户登录
      *
-     * @param userAccount  用户账户
-     * @param userPassword 用户密码
+     * @param userLoginRequest 登录请求DTO
      * @param request
      * @return 脱敏后的用户信息
      */
-    LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request);
-    
+    LoginUserVO userLogin(UserLoginRequest userLoginRequest, HttpServletRequest request);
+
 
     /**
      * 用户注册
      *
-     * @param userAccount   用户账户
-     * @param userPassword  用户密码
-     * @param checkPassword 校验密码
-     * @return 新用户 id
+     * @param request
+     * @return 用户ID
      */
-    long userRegister(String userAccount, String userPassword, String checkPassword);
+    long userRegister(UserRegisterRequest request);
 
     /**
      * 获取当前登录用户
@@ -65,7 +65,7 @@ public interface UserService extends IService<User> {
 
     /**
      * 获取脱敏展示 VO
-     * 
+     *
      * @param user 用户
      * @return
      */
@@ -73,7 +73,7 @@ public interface UserService extends IService<User> {
 
     /**
      * 批量获取脱敏展示 VO
-     * 
+     *
      * @param userList 用户列表
      * @return
      */
@@ -81,12 +81,12 @@ public interface UserService extends IService<User> {
 
     /**
      * 通过查询请求转换为QueryWrapper
-     * 
+     *
      * @param userQueryRequest 查询请求
      * @return
      */
     QueryWrapper getQueryWrapper(UserQueryRequest userQueryRequest);
-    
+
     /**
      * 获取加密后的密码
      *
@@ -110,5 +110,13 @@ public interface UserService extends IService<User> {
      * @return
      */
     boolean isAdmin(User user);
+
+    /**
+     * 更新用户信息
+     *
+     * @param request 用户修改信息DTO
+     * @return 是否修改成功
+     */
+    boolean updateInfo(UserUpdateRequest request);
 
 }

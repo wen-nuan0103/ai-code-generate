@@ -74,7 +74,7 @@ public class ChatHistoryController {
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<ChatHistory>> listAllChatHistoryByPageForAdmin(@RequestBody ChatHistoryQueryRequest chatHistoryQueryRequest) {
         ThrowUtils.throwIf(chatHistoryQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        long pageNum = chatHistoryQueryRequest.getPageNum();
+        long pageNum = chatHistoryQueryRequest.getCurrent();
         long pageSize = chatHistoryQueryRequest.getPageSize();
         // 查询数据
         QueryWrapper queryWrapper = chatHistoryService.getQueryWrapper(chatHistoryQueryRequest);

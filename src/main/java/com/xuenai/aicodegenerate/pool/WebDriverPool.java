@@ -2,7 +2,6 @@ package com.xuenai.aicodegenerate.pool;
 
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -61,8 +60,9 @@ public class WebDriverPool {
      */
     private WebDriver createDriver() {
         try {
-            System.setProperty("wdm.chromeDriverMirrorUrl", "https://registry.npmmirror.com/binary.html?path=chromedriver");
-            WebDriverManager.chromedriver().useMirror().setup();
+//            System.setProperty("wdm.chromeDriverMirrorUrl", "https://registry.npmmirror.com/binary.html?path=chromedriver");
+            System.clearProperty("wdm.chromeDriverMirrorUrl");
+//            WebDriverManager.chromedriver().useMirror().setup();
             // 配置 Chrome 选项
             ChromeOptions options = new ChromeOptions();
             // 无头模式

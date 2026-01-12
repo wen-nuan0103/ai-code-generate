@@ -5,6 +5,7 @@ import com.qcloud.cos.model.PutObjectResult;
 import com.xuenai.aicodegenerate.config.CosClientConfig;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -14,6 +15,7 @@ import java.io.File;
  */
 @Slf4j
 @Component
+@ConditionalOnBean(COSClient.class)
 public class CosManager {
 
     @Resource
@@ -31,6 +33,18 @@ public class CosManager {
      */
     public PutObjectResult putObject(String key, File file) {
         return cosClient.putObject(cosClientConfig.getBucket(), key, file);
+    }
+
+    /**
+     * 移动对象
+     *
+     * @param sourceKey      源地址
+     * @param destinationKey 目标地址
+     */
+    public void moveObject(String sourceKey, String destinationKey) {
+        String bucket = cosClientConfig.getBucket();
+        cosClient.copyObject(bucket, sourceKey, bucket, destinationKey);
+        cosClient.deleteObject(bucket, sourceKey);
     }
 
     /**

@@ -19,6 +19,11 @@ public class LoginUserVO implements Serializable {
     private String userAccount;
 
     /**
+     * 手机号 
+     */
+    private String phone;
+    
+    /**
      * 用户昵称
      */
     private String userName;
@@ -37,6 +42,36 @@ public class LoginUserVO implements Serializable {
      * 用户角色：user/admin
      */
     private String role;
+
+    /**
+     * 会员过期时间
+     */
+    private LocalDateTime vipExpireTime;
+
+    /**
+     * 会员兑换码
+     */
+    private String vipCode;
+
+    /**
+     * 会员编号
+     */
+    private Long vipNumber;
+
+    /**
+     * 积分
+     */
+    private Long points;
+
+    /**
+     * 分享码
+     */
+    private String shareCode;
+
+    /**
+     * 邀请用户 id
+     */
+    private Long inviteUser;
 
     /**
      * 创建时间
