@@ -2,16 +2,10 @@ package com.xuenai.aicodegenerate.service.impl;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
-import com.xuenai.aicodegenerate.exception.ErrorCode;
-import com.xuenai.aicodegenerate.exception.ThrowUtils;
 import com.xuenai.aicodegenerate.manager.CosManager;
-import com.xuenai.aicodegenerate.pool.WebDriverPool;
 import com.xuenai.aicodegenerate.service.ScreenshotService;
-import com.xuenai.aicodegenerate.utils.WebScreenshotUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.openqa.selenium.WebDriver;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -26,32 +20,33 @@ public class ScreenshotServiceImpl implements ScreenshotService {
     @Resource
     private CosManager cosManager;
 
-    @Lazy
-    @Resource
-    private WebDriverPool webDriverPool;
+//    @Lazy
+//    @Resource
+//    private WebDriverPool webDriverPool;
 
     @Override
     public String generateAndSaveScreenshot(String webUrl) {
-        ThrowUtils.throwIf(StrUtil.isBlank(webUrl), ErrorCode.PARAMS_ERROR, "网页url不能为空");
-        log.info("开始截图url:{}", webUrl);
-        WebDriver driver = null;
-        String localScreenshotPath = null;
-        try {
-            driver = webDriverPool.borrowDriver();
-            localScreenshotPath = WebScreenshotUtil.saveWebScreenshot(driver, webUrl);
-            ThrowUtils.throwIf(StrUtil.isBlank(localScreenshotPath), ErrorCode.OPERATION_ERROR, "本地截图生成失败");
-            String cosUrl = uploadScreenshotToCos(localScreenshotPath);
-            ThrowUtils.throwIf(StrUtil.isBlank(cosUrl), ErrorCode.OPERATION_ERROR, "截图上传失败");
-            log.info("截图生产并上传成功:{} -> {}", webUrl, cosUrl);
-            return cosUrl;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        } finally {
-            cleanLocalFile(localScreenshotPath);
-            if (driver != null) {
-                webDriverPool.returnDriver(driver);
-            }
-        }
+//        ThrowUtils.throwIf(StrUtil.isBlank(webUrl), ErrorCode.PARAMS_ERROR, "网页url不能为空");
+//        log.info("开始截图url:{}", webUrl);
+//        WebDriver driver = null;
+//        String localScreenshotPath = null;
+//        try {
+//            driver = webDriverPool.borrowDriver();
+//            localScreenshotPath = WebScreenshotUtil.saveWebScreenshot(driver, webUrl);
+//            ThrowUtils.throwIf(StrUtil.isBlank(localScreenshotPath), ErrorCode.OPERATION_ERROR, "本地截图生成失败");
+//            String cosUrl = uploadScreenshotToCos(localScreenshotPath);
+//            ThrowUtils.throwIf(StrUtil.isBlank(cosUrl), ErrorCode.OPERATION_ERROR, "截图上传失败");
+//            log.info("截图生产并上传成功:{} -> {}", webUrl, cosUrl);
+//            return cosUrl;
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        } finally {
+//            cleanLocalFile(localScreenshotPath);
+//            if (driver != null) {
+//                webDriverPool.returnDriver(driver);
+//            }
+//        }
+        return  "";     
     }
 
     /**

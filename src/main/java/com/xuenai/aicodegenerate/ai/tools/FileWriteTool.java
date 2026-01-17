@@ -35,8 +35,8 @@ public class FileWriteTool extends BaseTool {
         try {
             Path path = Paths.get(relativePath);
             if (!path.isAbsolute()) {
-                String projectName = "vue_project_" + appId;
-                Path projectRoot = Paths.get(CODE_OUTPUT_ROOT_DIR, projectName);
+                String projectDirName = getProjectDirName(appId);
+                Path projectRoot = Paths.get(CODE_OUTPUT_ROOT_DIR, projectDirName);
                 path = projectRoot.resolve(relativePath);
             }
             Path parentPath = path.getParent();

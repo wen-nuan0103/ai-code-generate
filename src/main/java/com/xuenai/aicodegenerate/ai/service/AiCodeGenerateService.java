@@ -51,6 +51,26 @@ public interface AiCodeGenerateService {
     Flux<String> generateMultiFileCodeStream(String userMessage);
 
     /**
+     * 生成 HTML 代码（流式 + 工具调用）
+     *
+     * @param appId       应用 ID
+     * @param userMessage 用户消息
+     * @return TokenStream
+     */
+    @SystemMessage(fromResource = "prompt/code-generate-html-system-prompt.txt")
+    TokenStream generateHtmlCodeStreamWithTools(@MemoryId long appId, @UserMessage String userMessage);
+
+    /**
+     * 生成多文件代码（流式 + 工具调用）
+     *
+     * @param appId       应用 ID
+     * @param userMessage 用户消息
+     * @return TokenStream
+     */
+    @SystemMessage(fromResource = "prompt/code-generate-multi-file-system-prompt.txt")
+    TokenStream generateMultiFileCodeStreamWithTools(@MemoryId long appId, @UserMessage String userMessage);
+
+    /**
      * 生成 Vue 工程化项目
      *
      * @param userMessage 用户消息

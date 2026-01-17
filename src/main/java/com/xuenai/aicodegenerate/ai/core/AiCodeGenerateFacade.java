@@ -82,12 +82,12 @@ public class AiCodeGenerateFacade {
         AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactor.getAiCodeGeneratorService(appId,typeEnum);
         return switch (typeEnum) {
             case HTML -> {
-                Flux<String> result = aiCodeGenerateService.generateHtmlCodeStream(userMessage);
-                yield processCodeStream(result, typeEnum, appId);
+                TokenStream tokenStream = aiCodeGenerateService.generateHtmlCodeStreamWithTools(appId, userMessage);
+                yield processTokenStream(tokenStream);
             }
             case MULTI_FILE -> {
-                Flux<String> result = aiCodeGenerateService.generateMultiFileCodeStream(userMessage);
-                yield processCodeStream(result, typeEnum, appId);
+                TokenStream tokenStream = aiCodeGenerateService.generateMultiFileCodeStreamWithTools(appId, userMessage);
+                yield processTokenStream(tokenStream);
             }
             case VUE_PROJECT -> {
                 TokenStream tokenStream = aiCodeGenerateService.generateVueProjectCodeStream(appId,userMessage);

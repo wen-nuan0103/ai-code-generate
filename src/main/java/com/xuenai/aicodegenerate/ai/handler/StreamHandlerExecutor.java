@@ -36,10 +36,8 @@ public class StreamHandlerExecutor {
      * @return 处理后的流
      */
     public Flux<String> doExecute(Flux<String> originFlux, ChatHistoryService chatHistoryService, long appId, User loginUser, CodeGenerateTypeEnum generateTypeEnum) {
-        return switch (generateTypeEnum) {
-            case VUE_PROJECT -> jsonMessageStreamHandler.handle(originFlux, chatHistoryService, appId, loginUser);
-            case HTML, MULTI_FILE -> simpleTextStreamHandler.handle(originFlux, chatHistoryService, appId, loginUser);
-        };
+        // 所有类型都使用 JSON 消息处理器
+        return jsonMessageStreamHandler.handle(originFlux, chatHistoryService, appId, loginUser);
     }
 
     /**

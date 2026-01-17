@@ -9,7 +9,6 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -21,7 +20,7 @@ import java.util.concurrent.BlockingQueue;
  * WebDriver 池
  */
 @Slf4j
-@Component
+//@Component
 public class WebDriverPool {
 
     private final BlockingQueue<WebDriver> pool;

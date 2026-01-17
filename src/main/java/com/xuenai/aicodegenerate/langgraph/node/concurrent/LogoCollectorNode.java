@@ -3,8 +3,6 @@ package com.xuenai.aicodegenerate.langgraph.node.concurrent;
 import com.xuenai.aicodegenerate.langgraph.model.dto.ImageCollectionPlan;
 import com.xuenai.aicodegenerate.langgraph.model.dto.ImageResource;
 import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;
-import com.xuenai.aicodegenerate.langgraph.tools.LogoGeneratorTool;
-import com.xuenai.aicodegenerate.utils.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.action.AsyncNodeAction;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
@@ -26,17 +24,17 @@ public class LogoCollectorNode {
             List<ImageResource> logos = new ArrayList<>();
             try {
                 ImageCollectionPlan plan = context.getImageCollectionPlan();
-                if (plan != null && plan.getLogoTasks() != null) {
-                    LogoGeneratorTool logoTool = SpringContextUtil.getBean(LogoGeneratorTool.class);
-                    log.info("开始并发生成Logo, 任务数: {}", plan.getLogoTasks().size());
-                    for (ImageCollectionPlan.LogoTask task : plan.getLogoTasks()) {
-                        List<ImageResource> images = logoTool.generateLogo(task.description());
-                        if (images != null) {
-                            logos.addAll(images);
-                        }
-                    }
-                    log.info("Logo生成完成, 共生成 {} 张图片", logos.size());
-                }
+//                if (plan != null && plan.getLogoTasks() != null) {
+//                    LogoGeneratorTool logoTool = SpringContextUtil.getBean(LogoGeneratorTool.class);
+//                    log.info("开始并发生成Logo, 任务数: {}", plan.getLogoTasks().size());
+//                    for (ImageCollectionPlan.LogoTask task : plan.getLogoTasks()) {
+//                        List<ImageResource> images = logoTool.generateLogo(task.description());
+//                        if (images != null) {
+//                            logos.addAll(images);
+//                        }
+//                    }
+//                    log.info("Logo生成完成, 共生成 {} 张图片", logos.size());
+//                }
             } catch (Exception e) {
                 log.error("Logo生成失败: {}", e.getMessage(), e);
             }
