@@ -91,7 +91,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.commonGuardrailParams = commonGuardrailParams;
 
         this.toolSpecifications = copy(toolSpecifications);
-        this.toolExecutors = copy(toolExecutors);
+        // ⭐ 修复：直接赋值而不是复制，避免 copy() 方法返回 null
+        this.toolExecutors = toolExecutors;
+        
+        // ⭐ 添加调试日志
+        System.out.println("=== AiServiceStreamingResponseHandler Constructor ===");
+        System.out.println("Input toolExecutors: " + (toolExecutors != null ? toolExecutors.size() + " - " + toolExecutors.keySet() : "null"));
+        System.out.println("After assign toolExecutors: " + (this.toolExecutors != null ? this.toolExecutors.size() + " - " + this.toolExecutors.keySet() : "null"));
+        System.out.println("====================================================");
+        
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
     }
 
@@ -119,6 +127,18 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (aiMessage.hasToolExecutionRequests()) {
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                 String toolName = toolExecutionRequest.name();
+                
+                // ⭐ 添加调试日志
+                System.out.println("=== Tool Execution Debug ===");
+                System.out.println("Requested tool name: " + toolName);
+                System.out.println("toolExecutors is null: " + (toolExecutors == null));
+                if (toolExecutors != null) {
+                    System.out.println("toolExecutors size: " + toolExecutors.size());
+                    System.out.println("toolExecutors keys: " + toolExecutors.keySet());
+                    System.out.println("Contains key '" + toolName + "': " + toolExecutors.containsKey(toolName));
+                }
+                System.out.println("============================");
+                
                 ToolExecutor toolExecutor = toolExecutors.get(toolName);
                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                 ToolExecutionResultMessage toolExecutionResultMessage =

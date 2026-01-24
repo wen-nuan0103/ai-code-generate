@@ -36,6 +36,6 @@ public class ToolFactory {
                     log.debug("为工具 {} 设置上下文: appId={}, type={}", 
                             tool.getToolName(), appId, codeGenerateType.getValue());
                 })
-                .toArray();
+                .toArray(BaseTool[]::new);
     }
 }

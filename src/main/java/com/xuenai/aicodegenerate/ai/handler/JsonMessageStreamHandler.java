@@ -83,12 +83,7 @@ public class JsonMessageStreamHandler {
                     }
     
                     // 其他消息正常处理
-                    String processed = handleJsonMessageChunk(chunk, chatHistoryStringBuilder, seenToolIds);
-                    if (StrUtil.isNotEmpty(processed)) {
-                        return Flux.just(processed);
-                    } else {
-                        return Flux.empty();
-                    }
+                    return handleJsonMessageChunk(chunk, chatHistoryStringBuilder, seenToolIds);
                 })
                 .doOnComplete(() -> {
                     String aiResponse = chatHistoryStringBuilder.toString();
@@ -108,13 +103,13 @@ public class JsonMessageStreamHandler {
     /**
      * 解析并收集 TokenStream 数据
      */
-    private String handleJsonMessageChunk(String chunk, StringBuilder chatHistoryStringBuilder, Set<String> seenToolIds) {
+    private Flux<String> handleJsonMessageChunk(String chunk, StringBuilder chatHistoryStringBuilder, Set<String> seenToolIds) {
         // 解析 JSON
         StreamMessage streamMessage = JSONUtil.toBean(chunk, StreamMessage.class);
         StreamMessageTypeEnum typeEnum = StreamMessageTypeEnum.getEnumByValue(streamMessage.getType());
         if (typeEnum == null) {
             log.warn("未知的消息类型: {}", streamMessage.getType());
-            return "";
+            return Flux.empty();
         }
         switch (typeEnum) {
             case AI_RESPONSE -> {
@@ -122,7 +117,7 @@ public class JsonMessageStreamHandler {
                 String data = aiMessage.getData();
                 chatHistoryStringBuilder.append(data);
                 
-                return data;
+                return Flux.just(data);
             }
             case TOOL_REQUEST -> {
                 ToolRequestMessage toolRequestMessage = JSONUtil.toBean(chunk, ToolRequestMessage.class);
@@ -131,9 +126,23 @@ public class JsonMessageStreamHandler {
                 if (toolId != null && !seenToolIds.contains(toolId)) {
                     seenToolIds.add(toolId);
                     BaseTool tool = toolManage.getTool(toolName);
-                    return tool.generateToolRequestResponse();
+                    String textDescription = tool.generateToolRequestResponse();
+                    Map<String, Object> frontendMessage = new HashMap<>(Map.of(
+                            "type", "tool_request",
+                            "tool_name", toolRequestMessage.getName(),
+                            "id", toolId
+                    ));
+                    try {
+                        JSONObject params = JSONUtil.parseObj(toolRequestMessage.getArguments());
+                        frontendMessage.put("parameters", params);
+                    } catch (Exception e) {
+                        log.error("解析工具参数失败: {}", toolRequestMessage.getArguments(), e);
+                        frontendMessage.put("parameters", new HashMap<>());
+                    }
+                    String frontendJson = JSONUtil.toJsonStr(frontendMessage);
+                    return Flux.just(frontendJson, textDescription);
                 } else {
-                    return "";
+                    return Flux.empty();
                 }
             }
             case TOOL_EXECUTED -> {
@@ -144,11 +153,25 @@ public class JsonMessageStreamHandler {
                 String result = tool.generateToolExecutedResult(jsonObject);
                 String output = String.format("\n\n%s\n\n", result);
                 chatHistoryStringBuilder.append(output);
-                return output;
+                Map<String, Object> frontendMessage = new HashMap<>(Map.of(
+                    "type","tool_executed",
+                    "tool_name", toolName,
+                    "id", toolExecutedMessage.getId(),
+                    "result", toolExecutedMessage.getResult()
+                ));
+                try {
+                    JSONObject params = JSONUtil.parseObj(toolExecutedMessage.getArguments());
+                    frontendMessage.put("parameters", params);
+                } catch (Exception e) {
+                    log.error("解析工具参数失败: {}", toolExecutedMessage.getArguments(), e);
+                    frontendMessage.put("parameters", new HashMap<>());
+                }
+                String frontendJson = JSONUtil.toJsonStr(frontendMessage);
+                return Flux.just(frontendJson, output);
             }
             default -> {
                 log.error("不支持的消息类型: {}", typeEnum);
-                return "";
+                return Flux.empty();
             }
         }
     }

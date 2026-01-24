@@ -127,6 +127,15 @@ public class AiServiceTokenStream implements TokenStream {
     public void start() {
         validateConfiguration();
 
+
+        System.out.println("=== AiServiceTokenStream Debug ===");
+        System.out.println("toolSpecifications: " + (toolSpecifications != null ? toolSpecifications.size() : "null"));
+        System.out.println("toolExecutors: " + (toolExecutors != null ? toolExecutors.size() : "null"));
+        if (toolExecutors != null) {
+            System.out.println("toolExecutors keys: " + toolExecutors.keySet());
+        }
+        System.out.println("==================================");
+
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
                 .toolSpecifications(toolSpecifications)

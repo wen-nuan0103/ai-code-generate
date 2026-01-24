@@ -59,7 +59,14 @@ public class ToolExecutionRequestBuilder {
 
     public String updateName(String name) {
         if (isNotNullOrBlank(name)) {
+            // ⭐ 添加调试日志
+            String oldName = this.name.get();
+            System.out.println("=== updateName Debug ===");
+            System.out.println("Input name: " + name);
+            System.out.println("Old name: " + oldName);
             this.name.set(name);
+            System.out.println("New name: " + this.name.get());
+            System.out.println("========================");
         }
         return this.name.get();
     }

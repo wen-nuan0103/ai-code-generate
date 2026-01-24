@@ -10,10 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
@@ -79,8 +76,46 @@ public class WorkflowStreamHandler {
                                 "step", 999
                         );
                         thinkingSteps.add(step);
+
+                        Map<String, Object> frontendMessage = new HashMap<>();
+                        frontendMessage.put("type", type);
+                        frontendMessage.put("tool_name", toolJson.getStr("name"));
+
+                        if ("tool_request".equals(type)) {
+                            frontendMessage.put("id", id);
+                            // 解析 parameters
+                            try {
+                                String argsStr = toolJson.getStr("arguments");
+                                if (StrUtil.isNotBlank(argsStr)) {
+                                    JSONObject params = JSONUtil.parseObj(argsStr);
+                                    frontendMessage.put("parameters", params);
+                                } else {
+                                    frontendMessage.put("parameters", new HashMap<>());
+                                }
+                            } catch (Exception e) {
+                                log.error("解析 tool_request 参数失败", e);
+                                frontendMessage.put("parameters", new HashMap<>());
+                            }
+                        } else if ("tool_executed".equals(type)) {
+                            frontendMessage.put("tool_call_id", toolJson.getStr("tool_call_id"));
+                            frontendMessage.put("result", toolJson.getStr("result"));
+                            // 解析 parameters
+                            try {
+                                String argsStr = toolJson.getStr("arguments");
+                                if (StrUtil.isNotBlank(argsStr)) {
+                                    JSONObject params = JSONUtil.parseObj(argsStr);
+                                    frontendMessage.put("parameters", params);
+                                } else {
+                                    frontendMessage.put("parameters", new HashMap<>());
+                                }
+                            } catch (Exception e) {
+                                log.error("解析 tool_executed 参数失败", e);
+                                frontendMessage.put("parameters", new HashMap<>());
+                            }
+                        }
+                        String frontendJson = JSONUtil.toJsonStr(frontendMessage);
                         // 发送 JSON 给前端更新状态
-                        return Flux.just(JSONUtil.toJsonStr(step));
+                        return Flux.just(frontendJson, JSONUtil.toJsonStr(step));
                     } else {
                         return Flux.empty();
                     }

@@ -110,25 +110,33 @@ public class OpenAiStreamingResponseBuilder {
         }
 
         if (delta.toolCalls() != null) {
-//            System.out.println("OLOLO " + delta.toolCalls()); // TODO
-
             for (ToolCall toolCall : delta.toolCalls()) {
-
+                
+                // ⭐ 修复：使用工具ID作为key，而不是index（Gemini所有工具都是index=0）
+                String toolKey = toolCall.id() != null ? toolCall.id() : String.valueOf(toolCall.index());
+                
                 ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                        toolCall.index(),
+                        toolKey.hashCode(), // 使用ID的hashCode作为key
                         idx -> new ToolExecutionRequestBuilder()
                 );
 
                 if (toolCall.id() != null) {
-                    builder.idBuilder.append(toolCall.id());
+                    // ⭐ ID 只设置一次，不累积
+                    if (builder.idBuilder.length() == 0) {
+                        builder.idBuilder.append(toolCall.id());
+                    }
                 }
 
                 FunctionCall functionCall = toolCall.function();
                 if (functionCall.name() != null) {
-                    builder.nameBuilder.append(functionCall.name());
+                    // ⭐ 工具名称只设置一次，不累积
+                    if (builder.nameBuilder.length() == 0) {
+                        builder.nameBuilder.append(functionCall.name());
+                    }
                 }
 
                 if (functionCall.arguments() != null) {
+                    // ⭐ 参数需要累积（流式传输）
                     builder.argumentsBuilder.append(functionCall.arguments());
                 }
             }
@@ -224,7 +232,13 @@ public class OpenAiStreamingResponseBuilder {
                     .build();
         }
 
-        return null;
+        // ⭐ 修复：当没有内容时，返回一个空的响应而不是 null
+        // 这种情况发生在 AI 只调用工具（如 exit）而不返回文本时
+        AiMessage emptyMessage = AiMessage.from("");
+        return ChatResponse.builder()
+                .aiMessage(emptyMessage)
+                .metadata(chatResponseMetadata)
+                .build();
     }
 
     private static class ToolExecutionRequestBuilder {
