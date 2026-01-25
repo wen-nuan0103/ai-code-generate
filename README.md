@@ -1,25 +1,631 @@
-# AI 代码生成平台
+# 🚀 AI 代码生成平台
 
-### 参考技术
+<div align="center">
 
-* SpringBoot 3
-* Vue 3
-* LangChain4j
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![LangChain4j](https://img.shields.io/badge/LangChain4j-1.2.0-blue.svg)](https://github.com/langchain4j/langchain4j)
+[![Vue](https://img.shields.io/badge/Vue-3.3.4-4FC08D.svg)](https://vuejs.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-### Guides
+**基于 AI 大模型的智能代码生成平台，支持多文件项目生成、实时流式输出、工具调用等企业级特性**
 
-The following guides illustrate how to use some features concretely:
+[功能特性](#-功能特性) • [快速开始](#-快速开始) • [架构设计](#-架构设计) • [API 文档](#-api-文档) • [部署指南](#-部署指南)
 
-* [Accessing data with MySQL](https://spring.io/guides/gs/accessing-data-mysql/)
-* [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
-* [Serving Web Content with Spring MVC](https://spring.io/guides/gs/serving-web-content/)
-* [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
+</div>
 
-### Maven Parent overrides
+---
 
-Due to Maven's design, elements are inherited from the parent POM to the project POM.
-While most of the inheritance is fine, it also inherits unwanted elements like `<license>` and `<developers>` from the
-parent.
-To prevent this, the project POM contains empty overrides for these elements.
-If you manually switch to a different parent and actually want the inheritance, you need to remove those overrides.
+## 📋 目录
 
+- [项目简介](#-项目简介)
+- [功能特性](#-功能特性)
+- [技术栈](#-技术栈)
+- [系统架构](#-系统架构)
+- [快速开始](#-快速开始)
+- [配置说明](#-配置说明)
+- [API 文档](#-api-文档)
+- [核心功能](#-核心功能)
+- [部署指南](#-部署指南)
+- [性能优化](#-性能优化)
+- [故障排查](#-故障排查)
+- [贡献指南](#-贡献指南)
+- [许可证](#-许可证)
+
+---
+
+## 📖 项目简介
+
+AI 代码生成平台是一个基于大语言模型（LLM）的智能代码生成系统，通过自然语言描述即可生成完整的前端项目代码。平台采用 **LangGraph4j** 工作流引擎和 **LangChain4j** 框架，支持多种 AI 模型（DeepSeek、Gemini、Qwen 等），实现了企业级的代码生成能力。
+
+### 🎯 核心价值
+
+- **🤖 智能生成**：通过自然语言描述，自动生成完整的 Vue 3 项目代码
+- **📦 多文件支持**：支持生成包含多个文件的完整项目结构
+- **⚡ 实时流式**：采用 SSE 技术，实时展示代码生成过程
+- **🔧 工具调用**：支持文件读写、目录操作等多种工具调用
+- **💾 会话记忆**：基于 Redis 的分布式会话管理，支持上下文对话
+- **🔄 工作流引擎**：使用 LangGraph4j 实现复杂的代码生成工作流
+
+---
+
+## ✨ 功能特性
+
+### 核心功能
+
+- ✅ **多模型支持**
+  - DeepSeek（推荐，稳定性高）
+  - Gemini 2.0 Flash
+  - 阿里云通义千问
+  - 支持自定义模型接入
+
+- ✅ **代码生成能力**
+  - Vue 3 单页应用生成
+  - 多文件项目生成
+  - HTML 静态页面生成
+  - 响应式设计自动适配
+
+- ✅ **工具调用系统**
+  - `writeFile` - 文件写入
+  - `readFile` - 文件读取
+  - `modifyFile` - 文件修改
+  - `deleteFile` - 文件删除
+  - `readDir` - 目录读取
+  - `exit` - 任务完成标记
+
+- ✅ **企业级特性**
+  - 分布式会话管理（Redis）
+  - 请求限流与防护
+  - 完整的监控指标（Prometheus）
+  - 异步任务处理（虚拟线程）
+  - 缓存优化（Caffeine）
+
+---
+
+## 🛠 技术栈
+
+### 后端技术
+
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Spring Boot | 3.5.6 | 核心框架 |
+| LangChain4j | 1.2.0 | AI 应用开发框架 |
+| LangGraph4j | 1.6.0-rc2 | 工作流引擎 |
+| MyBatis-Flex | 1.11.0 | ORM 框架 |
+| Redis | - | 缓存与会话存储 |
+| Redisson | 3.50.0 | 分布式锁 |
+| Caffeine | - | 本地缓存 |
+| Knife4j | 4.4.0 | API 文档 |
+
+### 前端技术
+
+| 技术 | 版本 | 说明 |
+|------|------|------|
+| Vue | 3.3.4 | 前端框架 |
+| Vue Router | 4.2.4 | 路由管理 |
+| Vite | 4.4.5 | 构建工具 |
+
+### AI 模型
+
+| 模型 | 提供商 | 用途 |
+|------|--------|------|
+| DeepSeek Chat | DeepSeek | 代码生成（推荐） |
+| Gemini 2.0 Flash | Google | 代码生成 |
+| Qwen Turbo | 阿里云 | 智能路由 |
+
+---
+
+## 🏗 系统架构
+
+### 整体架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         前端层                               │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ Vue 3 UI │  │ SSE 流式 │  │ 文件预览 │  │ 历史记录 │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+└─────────────────────────────────────────────────────────────┘
+                            ↓ HTTP/SSE
+┌─────────────────────────────────────────────────────────────┐
+│                      应用服务层                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │ 代码生成服务 │  │ 会话管理服务 │  │ 文件管理服务 │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      AI 引擎层                               │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              LangGraph4j 工作流引擎                   │  │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐    │  │
+│  │  │ 路由节点│→│生成节点│→│工具节点│→│结束节点│    │  │
+│  │  └────────┘  └────────┘  └────────┘  └────────┘    │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              LangChain4j AI 服务                      │  │
+│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐    │  │
+│  │  │ 模型调用│  │工具执行│  │记忆管理│  │护栏检查│    │  │
+│  │  └────────┘  └────────┘  └────────┘  └────────┘    │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      基础设施层                              │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │  MySQL   │  │  Redis   │  │   COS    │  │Prometheus│   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 工作流设计
+
+```
+用户输入 → 路由节点 → 判断类型
+                         ├─ 代码生成 → 代码生成节点 → 工具调用 → 判断是否完成
+                         │                                          ├─ 否 → 继续生成
+                         │                                          └─ 是 → 结束节点
+                         └─ 普通对话 → 对话节点 → 结束节点
+```
+
+---
+
+## 🚀 快速开始
+
+### 前置要求
+
+- **JDK**: 21+
+- **Maven**: 3.8+
+- **MySQL**: 8.0+
+- **Redis**: 6.0+
+- **Node.js**: 16+ (前端开发)
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/your-org/ai-code-generate.git
+cd ai-code-generate
+```
+
+### 2. 配置数据库
+
+```sql
+-- 创建数据库
+CREATE DATABASE ai_code_generate CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 导入表结构
+mysql -u root -p ai_code_generate < sql/schema.sql
+```
+
+### 3. 配置应用
+
+复制配置文件并修改：
+
+```bash
+cp src/main/resources/application-local.yml.example src/main/resources/application-local.yml
+```
+
+编辑 `application-local.yml`，配置数据库和 AI 模型：
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/ai_code_generate
+    username: your_username
+    password: your_password
+
+langchain4j:
+  open-ai:
+    reasoning:
+      base-url: https://api.deepseek.com
+      api-key: your_deepseek_api_key
+      model-name: deepseek-chat
+```
+
+### 4. 启动应用
+
+```bash
+# 编译项目
+mvn clean package -DskipTests
+
+# 启动应用
+java -jar target/ai-code-generate-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
+```
+
+### 5. 访问应用
+
+- **API 文档**: http://localhost:8080/api/doc.html
+- **健康检查**: http://localhost:8080/api/actuator/health
+- **监控指标**: http://localhost:8080/api/actuator/prometheus
+
+---
+
+## ⚙️ 配置说明
+
+### AI 模型配置
+
+#### DeepSeek（推荐）
+
+```yaml
+langchain4j:
+  open-ai:
+    reasoning:
+      base-url: https://api.deepseek.com
+      api-key: sk-xxxxx
+      model-name: deepseek-chat
+      max-tokens: 8192
+      temperature: 0.7
+```
+
+#### Gemini
+
+```yaml
+langchain4j:
+  gemini:
+    reasoning:
+      base-url: https://your-proxy.com/v1
+      api-key: sk-xxxxx
+      model-name: gemini-2.0-flash-exp
+      max-tokens: 10240
+```
+
+### Redis 配置
+
+```yaml
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: your_password
+      database: 0
+```
+
+### 文件存储配置
+
+```yaml
+cos:
+  client:
+    host: https://your-bucket.cos.region.myqcloud.com
+    secretId: your_secret_id
+    secretKey: your_secret_key
+    region: ap-guangzhou
+    bucket: your-bucket
+```
+
+---
+
+## 📚 API 文档
+
+### 代码生成 API
+
+#### 流式生成代码
+
+```http
+GET /api/code/generate/stream?appId=123&message=创建一个响应式数据仪表盘
+```
+
+**响应**（SSE 流式）：
+
+```
+data: {"type":"text","content":"正在生成代码..."}
+
+data: {"type":"tool","name":"writeFile","args":{"relativePath":"index.html","content":"..."}}
+
+data: {"type":"complete","message":"生成完成"}
+```
+
+#### 获取生成历史
+
+```http
+GET /api/code/history?appId=123&page=1&size=20
+```
+
+**响应**：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "records": [
+      {
+        "id": 1,
+        "message": "创建一个响应式数据仪表盘",
+        "messageType": "user",
+        "createTime": "2024-01-24T10:00:00"
+      }
+    ],
+    "total": 100
+  }
+}
+```
+
+### 文件管理 API
+
+#### 下载生成的文件
+
+```http
+GET /api/file/download?appId=123&path=index.html
+```
+
+#### 获取文件列表
+
+```http
+GET /api/file/list?appId=123
+```
+
+---
+
+## 🔧 核心功能
+
+### 1. 工具调用系统
+
+平台实现了完整的工具调用系统，AI 可以通过工具完成文件操作：
+
+```java
+@Tool("写入文件到指定路径")
+public String writeFile(
+    @P("文件的相对路径") String relativePath,
+    @P("要写入文件的内容") String content
+) {
+    // 实现文件写入逻辑
+    return "文件写入成功: " + relativePath;
+}
+```
+
+### 2. 会话记忆管理
+
+基于 Redis 的分布式会话管理，支持多轮对话：
+
+```java
+MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
+    .id(appId)
+    .chatMemoryStore(customRedisChatMemoryStore)
+    .maxMessages(100)
+    .build();
+```
+
+### 3. 流式输出
+
+采用 SSE（Server-Sent Events）技术，实时展示生成过程：
+
+```java
+@GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+public Flux<ServerSentEvent<String>> generateStream(
+    @RequestParam Long appId,
+    @RequestParam String message
+) {
+    return codeGenerateService.generateCodeStream(appId, message);
+}
+```
+
+### 4. 工作流引擎
+
+使用 LangGraph4j 实现复杂的代码生成工作流：
+
+```java
+StateGraph<AgentState> workflow = new StateGraph<>(AgentState::new)
+    .addNode("router", routerNode)
+    .addNode("codeGenerator", codeGeneratorNode)
+    .addNode("toolExecutor", toolExecutorNode)
+    .addEdge(START, "router")
+    .addConditionalEdges("router", routingFunction)
+    .addEdge("codeGenerator", END);
+```
+
+---
+
+## 🚢 部署指南
+
+### Docker 部署
+
+#### 1. 构建镜像
+
+```bash
+# 构建应用镜像
+docker build -t ai-code-generate:latest .
+```
+
+#### 2. 使用 Docker Compose
+
+```yaml
+version: '3.8'
+
+services:
+  app:
+    image: ai-code-generate:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ai_code_generate
+      - SPRING_REDIS_HOST=redis
+    depends_on:
+      - mysql
+      - redis
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: ai_code_generate
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:
+```
+
+启动服务：
+
+```bash
+docker-compose up -d
+```
+
+### Kubernetes 部署
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-code-generate
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ai-code-generate
+  template:
+    metadata:
+      labels:
+        app: ai-code-generate
+    spec:
+      containers:
+      - name: app
+        image: ai-code-generate:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+```
+
+---
+
+## ⚡ 性能优化
+
+### 1. 缓存策略
+
+- **本地缓存**：使用 Caffeine 缓存 AI 服务实例（30分钟过期）
+- **分布式缓存**：使用 Redis 缓存会话数据和生成结果
+
+### 2. 异步处理
+
+- 使用 Java 21 虚拟线程处理并发请求
+- 工作流节点异步执行，提升响应速度
+
+### 3. 连接池优化
+
+```yaml
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+```
+
+### 4. 监控指标
+
+集成 Prometheus 监控：
+
+- AI 模型调用次数
+- 代码生成成功率
+- 平均响应时间
+- 工具调用统计
+
+---
+
+## 🔍 故障排查
+
+### 常见问题
+
+#### 1. `toolExecutor is null` 错误
+
+**原因**：LangChain4j 源码中 `copy()` 方法导致 Map 丢失
+
+**解决**：已在 `AiServiceStreamingResponseHandler.java` 中修复，使用直接赋值
+
+#### 2. Gemini `thought_signature` 错误
+
+**原因**：Gemini Thinking 模型需要特殊字段
+
+**解决**：切换到 DeepSeek 或使用非 Thinking 版本的 Gemini
+
+#### 3. 工具名称重复累积
+
+**原因**：Gemini API 每个 SSE 都包含完整工具信息
+
+**解决**：已在 `OpenAiStreamingResponseBuilder.java` 中修复，只在第一次设置工具名称
+
+#### 4. 缓存未更新
+
+**原因**：Caffeine 缓存未过期
+
+**解决**：重启应用或等待缓存过期（10-30分钟）
+
+### 日志配置
+
+```yaml
+logging:
+  level:
+    com.xuenai.aicodegenerate: DEBUG
+    dev.langchain4j: DEBUG
+  file:
+    name: logs/application.log
+```
+
+---
+
+## 🤝 贡献指南
+
+我们欢迎所有形式的贡献！
+
+### 贡献流程
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+### 代码规范
+
+- 遵循阿里巴巴 Java 开发手册
+- 使用 Lombok 简化代码
+- 添加必要的注释和文档
+- 编写单元测试
+
+---
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+---
+
+## 🙏 致谢
+
+- [LangChain4j](https://github.com/langchain4j/langchain4j) - AI 应用开发框架
+- [LangGraph4j](https://github.com/bsorrentino/langgraph4j) - 工作流引擎
+- [Spring Boot](https://spring.io/projects/spring-boot) - 应用框架
+- [DeepSeek](https://www.deepseek.com/) - AI 模型提供商
+
+---
+
+## 📞 联系我们
+
+- **问题反馈**: [GitHub Issues](https://github.com/your-org/ai-code-generate/issues)
+- **邮箱**: support@example.com
+- **文档**: [在线文档](https://docs.example.com)
+
+---
+
+<div align="center">
+
+**⭐ 如果这个项目对你有帮助，请给我们一个 Star！⭐**
+
+Made with ❤️ by AI Code Generate Team
+
+</div>

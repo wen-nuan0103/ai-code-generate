@@ -56,7 +56,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService {
-    
+
     @Resource
     private AiCodeGenerateFacade aiCodeGenerateFacade;
 
@@ -68,10 +68,10 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
     @Resource
     private ChatHistoryService chatHistoryService;
-    
+
     @Resource
     private ScreenshotService screenshotService;
-    
+
     @Resource
     private CodeGenerateConcurrentWorkflow codeGenerateConcurrentWorkflow;
 
@@ -98,27 +98,20 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         long historyCount = chatHistoryService.countByAppId(appId);
         chatHistoryService.createChatHistory(appId, loginUser.getId(), message, ChatHistoryMessageTypeEnum.USER.getValue());
 
-        MonitorContextHolder.setContext(
-                MonitorContext.builder()
-                        .userId(String.valueOf(loginUser.getId()))
-                        .appId(String.valueOf(appId))
-                        .build()
-        );
-        
+        MonitorContextHolder.setContext(MonitorContext.builder().userId(String.valueOf(loginUser.getId())).appId(String.valueOf(appId)).build());
+
         boolean isFirstCreation = (historyCount == 0);
-        
+
         if (isFirstCreation) {
             Flux<String> workflowFlux = codeGenerateConcurrentWorkflow.executeWorkflowFlux(appId, message);
-            return streamHandlerExecutor.doExecuteWorkflow(workflowFlux, chatHistoryService, appId, loginUser)
-                    .doFinally(signalType -> {
-                        MonitorContextHolder.clearContext();
-                    });
+            return streamHandlerExecutor.doExecuteWorkflow(workflowFlux, chatHistoryService, appId, loginUser).doFinally(signalType -> {
+                MonitorContextHolder.clearContext();
+            });
         } else {
             Flux<String> stream = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
-            return streamHandlerExecutor.doExecute(stream, chatHistoryService, appId, loginUser, generatorTypeEnum)
-                    .doFinally(signalType -> {
-                        MonitorContextHolder.clearContext();
-                    });
+            return streamHandlerExecutor.doExecute(stream, chatHistoryService, appId, loginUser, generatorTypeEnum).doFinally(signalType -> {
+                MonitorContextHolder.clearContext();
+            });
         }
     }
 
@@ -142,6 +135,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         File sourceDir = new File(sourceDirPath);
         ThrowUtils.throwIf(!sourceDir.exists() || !sourceDir.isDirectory(), ErrorCode.SYSTEM_ERROR, "代码生成目录不存在");
         CodeGenerateTypeEnum generateType = CodeGenerateTypeEnum.getEnumByValue(app.getCodeGeneratorType());
+        assert generateType != null;
         if (generateType.equals(CodeGenerateTypeEnum.VUE_PROJECT)) {
             boolean buildSuccess = vueProjectBuilder.buildProject(sourceDirPath);
             ThrowUtils.throwIf(!buildSuccess, ErrorCode.SYSTEM_ERROR, "项目构建失败");
@@ -169,10 +163,34 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             this.updateById(temp);
             ThrowUtils.throwIf(true, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
         }
-        
+
         String deployUrl = String.format("%s/%s/", AppConstant.CODE_DEPLOY_HOST, deployKey);
         generateAppScreenshotAsync(appId, deployUrl);
         return deployUrl;
+    }
+
+    @Override
+    public boolean offlineApp(Long appId, User loginUser) {
+        ThrowUtils.throwIf(appId == null || appId < 0, ErrorCode.PARAMS_ERROR, "应用 ID 错误");
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+
+        App app = this.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        ThrowUtils.throwIf(!Objects.equals(app.getUserId(), loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "无权限操作该应用");
+
+        String deployKey = app.getDeployKey();
+        String deployDir = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
+        try {
+            FileUtil.del(new File(deployDir));
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "下线应用失败: " + e.getMessage());
+        }
+        App reviseApp = new App();
+        reviseApp.setId(appId);
+        reviseApp.setDeployKey(null);
+        reviseApp.setDeployStatus(AppDeployStatusEnum.UN_DEPLOY.getValue());
+        reviseApp.setDeployedTime(LocalDateTime.now());
+        return this.updateById(reviseApp);
     }
 
     @Override
@@ -307,7 +325,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
             reviseApp.setId(appId);
             reviseApp.setCover(url);
             boolean result = this.updateById(reviseApp);
-            ThrowUtils.throwIf(!result,ErrorCode.OPERATION_ERROR,"更新应用封面失败");
+            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "更新应用封面失败");
         });
     }
 

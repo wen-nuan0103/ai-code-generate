@@ -37,6 +37,15 @@ public interface AppService extends IService<App> {
      */
     String deployApp(Long appId, User loginUser);
 
+    /**
+     * 下线应用
+     *
+     * @param appId     应用 ID
+     * @param loginUser 用户
+     * @return 是否下线成功
+     */
+    boolean offlineApp(Long appId, User loginUser);
+
 
     /**
      * 校验应用

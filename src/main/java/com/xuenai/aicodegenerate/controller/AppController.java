@@ -95,6 +95,20 @@ public class AppController {
     }
 
     /**
+     * 下线应用
+     * @return 下线结构
+     */
+    @PostMapping("/offline")
+    public BaseResponse<Boolean> offline(@RequestBody AppDeployRequest deployRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(deployRequest == null, ErrorCode.PARAMS_ERROR);
+        Long appId = deployRequest.getAppId();
+        ThrowUtils.throwIf(appId == null || appId < 0, ErrorCode.PARAMS_ERROR, "应用 ID 错误");
+        User loginUser = userService.getLoginUser(request);
+        boolean offlined = appService.offlineApp(appId, loginUser);
+        return ResultUtils.success(offlined);
+    }
+
+    /**
      * 下载应用代码
      *
      * @param appId    应用ID
