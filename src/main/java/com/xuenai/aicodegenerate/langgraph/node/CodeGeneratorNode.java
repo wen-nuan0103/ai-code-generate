@@ -29,7 +29,7 @@ public class CodeGeneratorNode {
         return node_async(state -> {
             WorkflowContext context = WorkflowContext.getContext(state);
             log.info("执行节点: 代码生成");
-            
+
             // 构造用户消息（包含原始提示词和可能的错误修复信息）
             String userMessage = buildUserMessage(context);
             CodeGenerateTypeEnum generationType = context.getGenerationType();
@@ -42,7 +42,7 @@ public class CodeGeneratorNode {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "工作流上下文丢失 appId");
             }
             // 调用流式代码生成
-            Flux<String> codeStream = codeGeneratorFacade.generateStreamAndSaveCode(userMessage, generationType, appId);
+            Flux<String> codeStream = codeGeneratorFacade.generateStreamAndSaveCode(userMessage, generationType, appId,context.getUserId());
             try {
                 codeStream.doOnNext(chunk -> {
                     streamHelper.sendChunk(appId, chunk);

@@ -44,4 +44,22 @@ public interface AiModelService extends IService<AiModel> {
      */
     List<AiModelVO> listAiModelVO(String searchText);
 
+    /**
+     * 根据模型能力获取对应的模型
+     *
+     * @param type 模型能力
+     * @return
+     */
+    List<AiModel> listAiModelByType(String type);
+
+
+    /**
+     * 获取模型价格配置
+     *
+     * @param modelCode 模型编码
+     * @param modelType 模型类型
+     * @return
+     */
+    AiModel getModelPriceConfig(String modelCode, String modelType);
+
 }

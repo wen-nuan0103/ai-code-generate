@@ -8,6 +8,7 @@ import com.xuenai.aicodegenerate.ai.tools.ToolFactory;
 import com.xuenai.aicodegenerate.custom.CustomRedisChatMemoryStore;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
+import com.xuenai.aicodegenerate.model.enums.AiModelTypeEnum;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
 import com.xuenai.aicodegenerate.service.ChatHistoryService;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -16,7 +17,6 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
@@ -29,16 +29,7 @@ import java.time.Duration;
 public class AiCodeGenerateServiceFactor {
 
     @Resource
-    @Qualifier("streamingChatModel")
-    private StreamingChatModel streamingChatModel;
-
-    @Resource
-    @Qualifier("reasoningStreamingChatModel")
-    private StreamingChatModel reasoningStreamingChatModel;    
-    
-    @Resource(name = "geminiReasoningStreamingChatModel")
-    @Qualifier("geminiReasoningStreamingChatModel")
-    private StreamingChatModel geminiReasoningStreamingChatModel;
+    private DynamicAiModelFactory dynamicAiModelFactory;
 
     @Resource
     private CustomRedisChatMemoryStore customRedisChatMemoryStore;
@@ -101,16 +92,19 @@ public class AiCodeGenerateServiceFactor {
      * @return ai 生成服务类
      */
     private AiCodeGenerateService createAiCodeGeneratorService(long appId, CodeGenerateTypeEnum generateType) {
-        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder().id(appId).chatMemoryStore(customRedisChatMemoryStore).maxMessages(100).build();
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .id(appId)
+                .chatMemoryStore(customRedisChatMemoryStore)
+                .maxMessages(100).build();
         // 加载历史对话到记忆中
         chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, 100);
+        StreamingChatModel streamingChatModel = dynamicAiModelFactory.getStreamingChatModel(AiModelTypeEnum.CODE_GEN.getValue());
         return switch (generateType) {
             case VUE_PROJECT, HTML, MULTI_FILE -> {
                 // 使用工具工厂创建带有上下文的工具
                 Object[] toolsWithContext = toolFactory.createToolsWithContext(appId, generateType);
-                
                 yield AiServices.builder(AiCodeGenerateService.class)
-                        .streamingChatModel(geminiReasoningStreamingChatModel)
+                        .streamingChatModel(streamingChatModel)
                         .chatMemoryProvider(memoryId -> chatMemory)
                         .tools(toolsWithContext)
                         .maxSequentialToolsInvocations(30) //连续最多调用30次

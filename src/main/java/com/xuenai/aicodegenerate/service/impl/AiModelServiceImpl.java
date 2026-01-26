@@ -2,6 +2,8 @@ package com.xuenai.aicodegenerate.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
@@ -15,14 +17,25 @@ import com.xuenai.aicodegenerate.model.dto.ai.model.AiModelUpdateRequest;
 import com.xuenai.aicodegenerate.model.entity.AiModel;
 import com.xuenai.aicodegenerate.model.vo.ai.AiModelVO;
 import com.xuenai.aicodegenerate.service.AiModelService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class AiModelServiceImpl extends ServiceImpl<AiModelMapper, AiModel> implements AiModelService {
+
+    private final Cache<String, AiModel> aiModelCache = Caffeine.newBuilder().maximumSize(1000)
+            .expireAfterWrite(Duration.ofMinutes(30))
+            .expireAfterAccess(Duration.ofMinutes(30))
+            .removalListener((key, value, cause) -> {
+                log.debug("AI 服务实例被移除,应用ID为: {},原因: {}", key, cause);
+            }).build();
+
 
     @Override
     public Page<AiModel> listAiModelByPage(AiModelQueryRequest request) {
@@ -71,7 +84,7 @@ public class AiModelServiceImpl extends ServiceImpl<AiModelMapper, AiModel> impl
         if (StrUtil.isNotBlank(request.getModelCode())) {
             long count = this.queryChain()
                     .where(AiModel::getModelCode).eq(request.getModelCode())
-                    .and(AiModel::getModelType).eq(aiModel.getModelType()) 
+                    .and(AiModel::getModelType).eq(aiModel.getModelType())
                     .and(AiModel::getId).ne(aiModel.getId())
                     .count();
             ThrowUtils.throwIf(count > 0, ErrorCode.PARAMS_ERROR, "模型编码已存在");
@@ -94,6 +107,20 @@ public class AiModelServiceImpl extends ServiceImpl<AiModelMapper, AiModel> impl
             vo.setId(String.valueOf(item.getId()));
             return vo;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<AiModel> listAiModelByType(String type) {
+        return this.queryChain().where(AiModel::getStatus).eq(1).and(AiModel::getModelType).eq(type).list();
+    }
+
+    @Override
+    public AiModel getModelPriceConfig(String modelCode, String modelType) {
+        String key = modelCode + "_" + modelType;
+        return aiModelCache.get(key, k -> this.queryChain()
+                .where(AiModel::getModelCode).eq(modelCode)
+                .and(AiModel::getModelType).eq(modelType)
+                .one());
     }
 
     /**

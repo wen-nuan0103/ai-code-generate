@@ -103,12 +103,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         boolean isFirstCreation = (historyCount == 0);
 
         if (isFirstCreation) {
-            Flux<String> workflowFlux = codeGenerateConcurrentWorkflow.executeWorkflowFlux(appId, message);
+            Flux<String> workflowFlux = codeGenerateConcurrentWorkflow.executeWorkflowFlux(loginUser.getId(), appId, message);
             return streamHandlerExecutor.doExecuteWorkflow(workflowFlux, chatHistoryService, appId, loginUser).doFinally(signalType -> {
                 MonitorContextHolder.clearContext();
             });
         } else {
-            Flux<String> stream = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId);
+            Flux<String> stream = aiCodeGenerateFacade.generateStreamAndSaveCode(message, generatorTypeEnum, appId, loginUser.getId());
             return streamHandlerExecutor.doExecute(stream, chatHistoryService, appId, loginUser, generatorTypeEnum).doFinally(signalType -> {
                 MonitorContextHolder.clearContext();
             });
@@ -218,6 +218,11 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
 
         this.validApp(app, true);
         String initPrompt = appAddRequest.getInitPrompt();
+        MonitorContextHolder.setContext(MonitorContext.builder()
+                .userId(String.valueOf(loginUser.getId()))
+                .appId(String.valueOf(-1))
+                .taskType("SIMPLE")
+                .build());
         CodeGenerateTypeEnum codeType = aiCodeGenerateTypeRoutingService.generateRouteCodeType(initPrompt);
         app.setCodeGeneratorType(codeType.getValue());
         app.setUserId(loginUser.getId());
@@ -367,6 +372,11 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     private void asyncGenerateProjectInfo(App app) {
         Thread.startVirtualThread(() -> {
             String userMessage = app.getInitPrompt();
+            MonitorContextHolder.setContext(MonitorContext.builder()
+                    .userId(String.valueOf(app.getId()))
+                    .appId(String.valueOf(app.getId()))
+                    .taskType("SIMPLE")
+                    .build());
             ProjectInfoResult info = aiCodeGenerateFacade.generateProjectInfo(app.getId(), userMessage);
             ThrowUtils.throwIf(info == null, ErrorCode.SYSTEM_ERROR, "生成项目信息失败");
             App reviseApp = new App();

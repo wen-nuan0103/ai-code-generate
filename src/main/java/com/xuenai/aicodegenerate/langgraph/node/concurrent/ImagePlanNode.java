@@ -3,6 +3,8 @@ package com.xuenai.aicodegenerate.langgraph.node.concurrent;
 import com.xuenai.aicodegenerate.ai.service.ImageCollectionPlanService;
 import com.xuenai.aicodegenerate.langgraph.model.dto.ImageCollectionPlan;
 import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;
+import com.xuenai.aicodegenerate.monitor.MonitorContext;
+import com.xuenai.aicodegenerate.monitor.MonitorContextHolder;
 import com.xuenai.aicodegenerate.utils.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.action.AsyncNodeAction;
@@ -21,6 +23,11 @@ public class ImagePlanNode {
             WorkflowContext context = WorkflowContext.getContext(state);
             String originalPrompt = context.getOriginalPrompt();
             try {
+                MonitorContextHolder.setContext(MonitorContext.builder()
+                        .userId(String.valueOf(context.getUserId()))
+                        .taskType("IMAGE_COLLECT")
+                        .appId(String.valueOf(context.getAppId()))
+                        .build());
                 // 获取图片收集计划服务
                 ImageCollectionPlanService planService = SpringContextUtil.getBean(ImageCollectionPlanService.class);
                 ImageCollectionPlan plan = planService.planImageCollection(originalPrompt);

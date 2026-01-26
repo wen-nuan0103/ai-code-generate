@@ -1,9 +1,7 @@
 package com.xuenai.aicodegenerate.langgraph.node;
 
-import com.xuenai.aicodegenerate.ai.service.AiCodeGenerateTypeRoutingService;
 import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
-import com.xuenai.aicodegenerate.utils.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.action.AsyncNodeAction;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
@@ -24,10 +22,7 @@ public class RouterNode {
 
             CodeGenerateTypeEnum generationType;
             try {
-                // 获取AI路由服务
-                AiCodeGenerateTypeRoutingService routingService = SpringContextUtil.getBean(AiCodeGenerateTypeRoutingService.class);
-                // 根据原始提示词进行智能路由
-                generationType = routingService.generateRouteCodeType(context.getOriginalPrompt());
+                generationType = context.getGenerationType();
                 log.info("AI智能路由完成，选择类型: {} ({})", generationType.getValue(), generationType.getText());
             } catch (Exception e) {
                 log.error("AI智能路由失败，使用默认HTML类型: {}", e.getMessage());

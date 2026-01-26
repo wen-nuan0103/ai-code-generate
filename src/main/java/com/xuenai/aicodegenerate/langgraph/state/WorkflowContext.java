@@ -48,6 +48,11 @@ public class WorkflowContext implements Serializable {
     private Long appId;
 
     /**
+     * 用户id
+     */
+    private Long userId;
+
+    /**
      * 图片资源字符串
      */
     private String imageListStr;

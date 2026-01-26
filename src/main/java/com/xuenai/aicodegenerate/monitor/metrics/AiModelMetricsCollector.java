@@ -1,5 +1,6 @@
 package com.xuenai.aicodegenerate.monitor.metrics;
 
+import com.xuenai.aicodegenerate.service.AiGenerationLogService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -19,6 +20,7 @@ public class AiModelMetricsCollector {
 
     @Resource
     private MeterRegistry meterRegistry;
+
 
     // 指标缓存器
     private final ConcurrentHashMap<String, Counter> requestCountersCache = new ConcurrentHashMap<>();

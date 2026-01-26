@@ -5,6 +5,8 @@ import cn.hutool.core.util.StrUtil;
 import com.xuenai.aicodegenerate.ai.service.CodeQualityCheckService;
 import com.xuenai.aicodegenerate.langgraph.model.dto.QualityResult;
 import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;
+import com.xuenai.aicodegenerate.monitor.MonitorContext;
+import com.xuenai.aicodegenerate.monitor.MonitorContextHolder;
 import com.xuenai.aicodegenerate.utils.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.action.AsyncNodeAction;
@@ -39,9 +41,15 @@ public class CodeQualityCheckNode {
                     // 调用 AI 进行代码质量检查
                     CodeQualityCheckService qualityCheckService = SpringContextUtil.getBean(CodeQualityCheckService.class);
                     String userPromptContext = "请根据 System Prompt 中的规则，检查以下项目代码的质量和可运行性：\n\n" + codeContent;
+                    MonitorContextHolder.setContext(MonitorContext.builder()
+                            .userId(String.valueOf(context.getUserId()))
+                            .taskType("CODE_AUDIT")
+                            .appId(String.valueOf(context.getAppId()))
+                            .build());
                     // 调用接口
                     qualityResult = qualityCheckService.checkCodeQuality(userPromptContext);
-                    log.info("代码质量检查完成 - 是否通过: {}", qualityResult.getIsValid());;
+                    log.info("代码质量检查完成 - 是否通过: {}", qualityResult.getIsValid());
+                    ;
                 }
             } catch (Exception e) {
                 log.error("代码质量检查异常: {}", e.getMessage(), e);

@@ -15,6 +15,8 @@ import com.xuenai.aicodegenerate.ai.saver.CodeFileSaverExecutor;
 import com.xuenai.aicodegenerate.exception.BusinessException;
 import com.xuenai.aicodegenerate.exception.ErrorCode;
 import com.xuenai.aicodegenerate.model.enums.CodeGenerateTypeEnum;
+import com.xuenai.aicodegenerate.monitor.MonitorContext;
+import com.xuenai.aicodegenerate.monitor.MonitorContextHolder;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -75,10 +77,15 @@ public class AiCodeGenerateFacade {
      * @param appId       应用 ID
      * @return 生成文件
      */
-    public Flux<String> generateStreamAndSaveCode(String userMessage, CodeGenerateTypeEnum typeEnum, Long appId) {
+    public Flux<String> generateStreamAndSaveCode(String userMessage, CodeGenerateTypeEnum typeEnum, Long appId,Long userId) {
         if (typeEnum == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "生成类型不能为空");
-        }   
+        }
+        MonitorContextHolder.setContext(MonitorContext.builder()
+                .userId(String.valueOf(userId))
+                .appId(String.valueOf(appId))
+                .taskType("CODE_GEN")
+                .build());
         AiCodeGenerateService aiCodeGenerateService = aiCodeGenerateServiceFactor.getAiCodeGeneratorService(appId,typeEnum);
         return switch (typeEnum) {
             case HTML -> {

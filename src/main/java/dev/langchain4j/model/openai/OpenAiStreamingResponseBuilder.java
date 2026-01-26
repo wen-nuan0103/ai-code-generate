@@ -114,7 +114,7 @@ public class OpenAiStreamingResponseBuilder {
                 
                 // ⭐ 修复：使用工具ID作为key，而不是index（Gemini所有工具都是index=0）
                 String toolKey = toolCall.id() != null ? toolCall.id() : String.valueOf(toolCall.index());
-                
+
                 ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
                         toolKey.hashCode(), // 使用ID的hashCode作为key
                         idx -> new ToolExecutionRequestBuilder()
@@ -123,7 +123,7 @@ public class OpenAiStreamingResponseBuilder {
                 if (toolCall.id() != null) {
                     // ⭐ ID 只设置一次，不累积
                     if (builder.idBuilder.length() == 0) {
-                        builder.idBuilder.append(toolCall.id());
+                    builder.idBuilder.append(toolCall.id());
                     }
                 }
 
@@ -131,7 +131,7 @@ public class OpenAiStreamingResponseBuilder {
                 if (functionCall.name() != null) {
                     // ⭐ 工具名称只设置一次，不累积
                     if (builder.nameBuilder.length() == 0) {
-                        builder.nameBuilder.append(functionCall.name());
+                    builder.nameBuilder.append(functionCall.name());
                     }
                 }
 

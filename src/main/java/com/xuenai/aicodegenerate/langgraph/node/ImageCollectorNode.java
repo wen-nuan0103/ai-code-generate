@@ -7,6 +7,8 @@ import com.xuenai.aicodegenerate.langgraph.state.WorkflowContext;
 import com.xuenai.aicodegenerate.langgraph.tools.ImageSearchTool;
 import com.xuenai.aicodegenerate.langgraph.tools.MermaidDiagramTool;
 import com.xuenai.aicodegenerate.langgraph.tools.PixabayIllustrationTool;
+import com.xuenai.aicodegenerate.monitor.MonitorContext;
+import com.xuenai.aicodegenerate.monitor.MonitorContextHolder;
 import com.xuenai.aicodegenerate.utils.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.action.AsyncNodeAction;
@@ -32,6 +34,11 @@ public class ImageCollectorNode {
             List<ImageResource> collectedImages = new ArrayList<>();
 
             try {
+                MonitorContextHolder.setContext(MonitorContext.builder()
+                        .userId(String.valueOf(context.getUserId()))
+                        .taskType("IMAGE_COLLECT")
+                        .appId(String.valueOf(context.getAppId()))
+                        .build());
                 // 获取图片收集计划
                 ImageCollectionPlanService planService = SpringContextUtil.getBean(ImageCollectionPlanService.class);
                 ImageCollectionPlan plan = planService.planImageCollection(originalPrompt);

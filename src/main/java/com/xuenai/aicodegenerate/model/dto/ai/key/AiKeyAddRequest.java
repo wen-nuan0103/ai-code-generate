@@ -13,5 +13,5 @@ public class AiKeyAddRequest implements Serializable {
     
     private String provider;
     
-    private String keys;
+    private String accessKey;
 }

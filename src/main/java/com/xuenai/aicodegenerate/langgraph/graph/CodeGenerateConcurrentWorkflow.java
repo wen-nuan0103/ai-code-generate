@@ -90,13 +90,14 @@ public class CodeGenerateConcurrentWorkflow {
      * @param originalPrompt 原始提示词
      * @return 包含进度信息的流
      */
-    public Flux<String> executeWorkflowFlux(Long appId, String originalPrompt) {
+    public Flux<String> executeWorkflowFlux(Long userId,Long appId, String originalPrompt) {
         return Flux.create(sink -> {
              workflowStreamHelper.register(appId,sink);
              Thread.startVirtualThread(() -> {
                 try {
                     CompiledGraph<MessagesState<String>> workflow = createWorkflow();
                     WorkflowContext initialContext = WorkflowContext.builder()
+                            .userId(userId)
                             .appId(appId)
                             .originalPrompt(originalPrompt)
                             .currentStep("初始化工作流")
