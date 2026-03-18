@@ -11,16 +11,12 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 
 @Internal
-// TODO location
-// TODO name
 public class ToolExecutionRequestBuilder {
 
     private final AtomicReference<Integer> index;
-
     private final AtomicReference<String> id = new AtomicReference<>();
     private final AtomicReference<String> name = new AtomicReference<>();
     private final StringBuffer arguments = new StringBuffer();
-
     private final List<ToolExecutionRequest> allToolExecutionRequests = new ArrayList<>();
 
     public ToolExecutionRequestBuilder() {
@@ -28,7 +24,7 @@ public class ToolExecutionRequestBuilder {
     }
 
     public ToolExecutionRequestBuilder(int index) {
-        this.index = new AtomicReference(index);
+        this.index = new AtomicReference<>(index);
     }
 
     public int index() {
@@ -59,14 +55,7 @@ public class ToolExecutionRequestBuilder {
 
     public String updateName(String name) {
         if (isNotNullOrBlank(name)) {
-            // ⭐ 添加调试日志
-            String oldName = this.name.get();
-            System.out.println("=== updateName Debug ===");
-            System.out.println("Input name: " + name);
-            System.out.println("Old name: " + oldName);
             this.name.set(name);
-            System.out.println("New name: " + this.name.get());
-            System.out.println("========================");
         }
         return this.name.get();
     }
@@ -78,14 +67,13 @@ public class ToolExecutionRequestBuilder {
     }
 
     public ToolExecutionRequest build() {
-        // TODO store it till complete response?
-        String arguments = this.arguments.toString();
+        String finalArguments = this.arguments.toString();
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                 .id(id.get())
                 .name(name.get())
-                .arguments(arguments.isEmpty() ? "{}" : arguments)
+                .arguments(finalArguments.isEmpty() ? "{}" : finalArguments)
                 .build();
-        allToolExecutionRequests.add(toolExecutionRequest); // TODO method name, rethink
+        allToolExecutionRequests.add(toolExecutionRequest);
         reset();
         return toolExecutionRequest;
     }
@@ -97,7 +85,9 @@ public class ToolExecutionRequestBuilder {
     }
 
     public boolean hasToolExecutionRequests() {
-        return !allToolExecutionRequests.isEmpty() || name.get() != null;
+        return !allToolExecutionRequests.isEmpty()
+                || isNotNullOrBlank(name.get())
+                || isNotNullOrEmpty(arguments.toString());
     }
 
     public List<ToolExecutionRequest> allToolExecutionRequests() {

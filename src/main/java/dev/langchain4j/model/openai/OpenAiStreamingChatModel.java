@@ -14,25 +14,36 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
-import dev.langchain4j.model.openai.internal.chat.*;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionRequest;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.shared.StreamOptions;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
-import static dev.langchain4j.model.openai.internal.OpenAiUtils.*;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_USER_AGENT;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.fromOpenAiResponseFormat;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiChatRequest;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.validate;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-4o-mini and o3.
  * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
- * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
 public class OpenAiStreamingChatModel implements StreamingChatModel {
 
@@ -73,7 +84,6 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         }
 
         this.defaultRequestParameters = OpenAiChatRequestParameters.builder()
-                // common parameters
                 .modelName(getOrDefault(builder.modelName, commonParameters.modelName()))
                 .temperature(getOrDefault(builder.temperature, commonParameters.temperature()))
                 .topP(getOrDefault(builder.topP, commonParameters.topP()))
@@ -83,9 +93,12 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .stopSequences(getOrDefault(builder.stop, commonParameters.stopSequences()))
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
-                .responseFormat(getOrDefault(fromOpenAiResponseFormat(builder.responseFormat), commonParameters.responseFormat()))
-                // OpenAI-specific parameters
-                .maxCompletionTokens(getOrDefault(builder.maxCompletionTokens, openAiParameters.maxCompletionTokens()))
+                .responseFormat(getOrDefault(
+                        fromOpenAiResponseFormat(builder.responseFormat),
+                        commonParameters.responseFormat()))
+                .maxCompletionTokens(getOrDefault(
+                        builder.maxCompletionTokens,
+                        openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(builder.logitBias, openAiParameters.logitBias()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, openAiParameters.parallelToolCalls()))
                 .seed(getOrDefault(builder.seed, openAiParameters.seed()))
@@ -107,34 +120,28 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-
         OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
         validate(parameters);
 
         ChatCompletionRequest openAiRequest =
                 toOpenAiChatRequest(chatRequest, parameters, strictTools, strictJsonSchema)
                         .stream(true)
-                        .streamOptions(StreamOptions.builder()
-                                .includeUsage(true)
-                                .build())
+                        .streamOptions(StreamOptions.builder().includeUsage(true).build())
                         .build();
 
         OpenAiStreamingResponseBuilder openAiResponseBuilder = new OpenAiStreamingResponseBuilder();
-        ToolExecutionRequestBuilder toolBuilder = new ToolExecutionRequestBuilder();
+        Map<Integer, ToolExecutionRequestBuilder> toolBuilders = new ConcurrentHashMap<>();
 
         client.chatCompletion(openAiRequest)
                 .onPartialResponse(partialResponse -> {
                     openAiResponseBuilder.append(partialResponse);
-                    handle(partialResponse, toolBuilder, handler);
+                    handle(partialResponse, toolBuilders, handler);
                 })
                 .onComplete(() -> {
-                    if (toolBuilder.hasToolExecutionRequests()) {
-                        try {
-                            handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
-                        } catch (Exception e) {
-                            withLoggingExceptions(() -> handler.onError(e));
-                        }
-                    }
+                    toolBuilders.entrySet().stream()
+                            .sorted(Map.Entry.comparingByKey())
+                            .forEach(entry -> emitCompletedToolRequest(entry.getKey(), entry.getValue(), handler));
+
                     ChatResponse chatResponse = openAiResponseBuilder.build();
                     try {
                         handler.onCompleteResponse(chatResponse);
@@ -149,9 +156,10 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 .execute();
     }
 
-    private static void handle(ChatCompletionResponse partialResponse,
-                               ToolExecutionRequestBuilder toolBuilder,
-                               StreamingChatResponseHandler handler) {
+    private static void handle(
+            ChatCompletionResponse partialResponse,
+            Map<Integer, ToolExecutionRequestBuilder> toolBuilders,
+            StreamingChatResponseHandler handler) {
         if (partialResponse == null) {
             return;
         }
@@ -179,39 +187,55 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                 withLoggingExceptions(() -> handler.onError(e));
             }
         }
+
         List<ToolCall> toolCalls = delta.toolCalls();
-        if (toolCalls != null) {
-            for (ToolCall toolCall : toolCalls) {
+        if (toolCalls == null) {
+            return;
+        }
 
-                int index = toolCall.index();
-                if (toolBuilder.index() != index) {
-                    try {
-                        handler.onCompleteToolExecutionRequest(toolBuilder.index(), toolBuilder.build());
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
-                    toolBuilder.updateIndex(index);
-                }
+        for (ToolCall toolCall : toolCalls) {
+            if (toolCall == null || toolCall.function() == null) {
+                continue;
+            }
 
-                String id = toolBuilder.updateId(toolCall.id());
-                String name = toolBuilder.updateName(toolCall.function().name());
+            int index = toolCall.index();
+            ToolExecutionRequestBuilder builder = toolBuilders.computeIfAbsent(
+                    index,
+                    ToolExecutionRequestBuilder::new
+            );
 
-                String partialArguments = toolCall.function().arguments();
-                if (isNotNullOrEmpty(partialArguments)) {
-                    toolBuilder.appendArguments(partialArguments);
+            String id = builder.updateId(toolCall.id());
+            String name = builder.updateName(toolCall.function().name());
+            String partialArguments = toolCall.function().arguments();
 
-                    ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
-                            .id(id)
-                            .name(name)
-                            .arguments(partialArguments)
-                            .build();
-                    try {
-                        handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
-                    } catch (Exception e) {
-                        withLoggingExceptions(() -> handler.onError(e));
-                    }
+            if (isNotNullOrEmpty(partialArguments)) {
+                builder.appendArguments(partialArguments);
+
+                ToolExecutionRequest partialToolExecutionRequest = ToolExecutionRequest.builder()
+                        .id(id)
+                        .name(name)
+                        .arguments(partialArguments)
+                        .build();
+                try {
+                    handler.onPartialToolExecutionRequest(index, partialToolExecutionRequest);
+                } catch (Exception e) {
+                    withLoggingExceptions(() -> handler.onError(e));
                 }
             }
+        }
+    }
+
+    private static void emitCompletedToolRequest(
+            int index,
+            ToolExecutionRequestBuilder builder,
+            StreamingChatResponseHandler handler) {
+        if (!builder.hasToolExecutionRequests()) {
+            return;
+        }
+        try {
+            handler.onCompleteToolExecutionRequest(index, builder.build());
+        } catch (Exception e) {
+            withLoggingExceptions(() -> handler.onError(e));
         }
     }
 
@@ -239,7 +263,6 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private String apiKey;
         private String organizationId;
         private String projectId;
-
         private ChatRequestParameters defaultRequestParameters;
         private String modelName;
         private Double temperature;
@@ -266,7 +289,6 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private List<ChatModelListener> listeners;
 
         public OpenAiStreamingChatModelBuilder() {
-            // This is public so it can be extended
         }
 
         public OpenAiStreamingChatModelBuilder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -274,12 +296,6 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
-        /**
-         * Sets default common {@link ChatRequestParameters} or OpenAI-specific {@link OpenAiChatRequestParameters}.
-         * <br>
-         * When a parameter is set via an individual builder method (e.g., {@link #modelName(String)}),
-         * its value takes precedence over the same parameter set via {@link ChatRequestParameters}.
-         */
         public OpenAiStreamingChatModelBuilder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
             return this;

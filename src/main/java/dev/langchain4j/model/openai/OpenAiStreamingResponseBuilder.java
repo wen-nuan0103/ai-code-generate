@@ -4,7 +4,11 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.openai.internal.chat.*;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
+import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
+import dev.langchain4j.model.openai.internal.chat.Delta;
+import dev.langchain4j.model.openai.internal.chat.FunctionCall;
+import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.shared.Usage;
@@ -32,11 +36,10 @@ import static java.util.stream.Collectors.toList;
 public class OpenAiStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
-
     private final StringBuffer toolNameBuilder = new StringBuffer();
     private final StringBuffer toolArgumentsBuilder = new StringBuffer();
-
-    private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
+    private final Map<Integer, ToolExecutionRequestAccumulator> indexToToolExecutionRequestBuilder =
+            new ConcurrentHashMap<>();
 
     private final AtomicReference<String> id = new AtomicReference<>();
     private final AtomicReference<Long> created = new AtomicReference<>();
@@ -100,43 +103,36 @@ public class OpenAiStreamingResponseBuilder {
         if (delta.functionCall() != null) {
             FunctionCall functionCall = delta.functionCall();
 
-            if (functionCall.name() != null) {
+            if (!isNullOrBlank(functionCall.name())) {
                 this.toolNameBuilder.append(functionCall.name());
             }
 
-            if (functionCall.arguments() != null) {
+            if (!isNullOrEmpty(functionCall.arguments())) {
                 this.toolArgumentsBuilder.append(functionCall.arguments());
             }
         }
 
         if (delta.toolCalls() != null) {
             for (ToolCall toolCall : delta.toolCalls()) {
-                
-                // ⭐ 修复：使用工具ID作为key，而不是index（Gemini所有工具都是index=0）
-                String toolKey = toolCall.id() != null ? toolCall.id() : String.valueOf(toolCall.index());
-
-                ToolExecutionRequestBuilder builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
-                        toolKey.hashCode(), // 使用ID的hashCode作为key
-                        idx -> new ToolExecutionRequestBuilder()
+                ToolExecutionRequestAccumulator builder = this.indexToToolExecutionRequestBuilder.computeIfAbsent(
+                        toolCall.index(),
+                        idx -> new ToolExecutionRequestAccumulator()
                 );
 
-                if (toolCall.id() != null) {
-                    // ⭐ ID 只设置一次，不累积
-                    if (builder.idBuilder.length() == 0) {
+                if (!isNullOrBlank(toolCall.id()) && builder.idBuilder.length() == 0) {
                     builder.idBuilder.append(toolCall.id());
-                    }
                 }
 
                 FunctionCall functionCall = toolCall.function();
-                if (functionCall.name() != null) {
-                    // ⭐ 工具名称只设置一次，不累积
-                    if (builder.nameBuilder.length() == 0) {
-                    builder.nameBuilder.append(functionCall.name());
-                    }
+                if (functionCall == null) {
+                    continue;
                 }
 
-                if (functionCall.arguments() != null) {
-                    // ⭐ 参数需要累积（流式传输）
+                if (!isNullOrBlank(functionCall.name()) && builder.nameBuilder.length() == 0) {
+                    builder.nameBuilder.append(functionCall.name());
+                }
+
+                if (!isNullOrEmpty(functionCall.arguments())) {
                     builder.argumentsBuilder.append(functionCall.arguments());
                 }
             }
@@ -175,7 +171,6 @@ public class OpenAiStreamingResponseBuilder {
     }
 
     public ChatResponse build() {
-
         OpenAiChatResponseMetadata chatResponseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(id.get())
                 .modelName(model.get())
@@ -195,9 +190,9 @@ public class OpenAiStreamingResponseBuilder {
                     .arguments(toolArgumentsBuilder.toString())
                     .build();
 
-            AiMessage aiMessage = isNullOrBlank(text) ?
-                    AiMessage.from(toolExecutionRequest) :
-                    AiMessage.from(text, singletonList(toolExecutionRequest));
+            AiMessage aiMessage = isNullOrBlank(text)
+                    ? AiMessage.from(toolExecutionRequest)
+                    : AiMessage.from(text, singletonList(toolExecutionRequest));
 
             return ChatResponse.builder()
                     .aiMessage(aiMessage)
@@ -207,6 +202,7 @@ public class OpenAiStreamingResponseBuilder {
 
         if (!indexToToolExecutionRequestBuilder.isEmpty()) {
             List<ToolExecutionRequest> toolExecutionRequests = indexToToolExecutionRequestBuilder.values().stream()
+                    .filter(it -> !isNullOrBlank(it.nameBuilder.toString()))
                     .map(it -> ToolExecutionRequest.builder()
                             .id(it.idBuilder.toString())
                             .name(it.nameBuilder.toString())
@@ -214,14 +210,16 @@ public class OpenAiStreamingResponseBuilder {
                             .build())
                     .collect(toList());
 
-            AiMessage aiMessage = isNullOrBlank(text) ?
-                    AiMessage.from(toolExecutionRequests) :
-                    AiMessage.from(text, toolExecutionRequests);
+            if (!toolExecutionRequests.isEmpty()) {
+                AiMessage aiMessage = isNullOrBlank(text)
+                        ? AiMessage.from(toolExecutionRequests)
+                        : AiMessage.from(text, toolExecutionRequests);
 
-            return ChatResponse.builder()
-                    .aiMessage(aiMessage)
-                    .metadata(chatResponseMetadata)
-                    .build();
+                return ChatResponse.builder()
+                        .aiMessage(aiMessage)
+                        .metadata(chatResponseMetadata)
+                        .build();
+            }
         }
 
         if (!isNullOrBlank(text)) {
@@ -232,8 +230,6 @@ public class OpenAiStreamingResponseBuilder {
                     .build();
         }
 
-        // ⭐ 修复：当没有内容时，返回一个空的响应而不是 null
-        // 这种情况发生在 AI 只调用工具（如 exit）而不返回文本时
         AiMessage emptyMessage = AiMessage.from("");
         return ChatResponse.builder()
                 .aiMessage(emptyMessage)
@@ -241,7 +237,7 @@ public class OpenAiStreamingResponseBuilder {
                 .build();
     }
 
-    private static class ToolExecutionRequestBuilder {
+    private static class ToolExecutionRequestAccumulator {
 
         private final StringBuffer idBuilder = new StringBuffer();
         private final StringBuffer nameBuilder = new StringBuffer();

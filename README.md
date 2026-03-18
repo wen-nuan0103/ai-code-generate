@@ -1,631 +1,341 @@
-# 🚀 AI 代码生成平台
+# AI 代码生成平台
 
-<div align="center">
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-brightgreen.svg)
+![Vue.js](https://img.shields.io/badge/Vue.js-3.0-blue.svg)
+![Java](https://img.shields.io/badge/Java-21+-orange.svg)
+![MySQL](https://img.shields.io/badge/MySQL-8.0+-blue.svg)
+![Redis](https://img.shields.io/badge/Redis-6.0+-red.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![LangChain4j](https://img.shields.io/badge/LangChain4j-1.2.0-blue.svg)](https://github.com/langchain4j/langchain4j)
-[![Vue](https://img.shields.io/badge/Vue-3.3.4-4FC08D.svg)](https://vuejs.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+基于 Spring Boot、LangChain4j 和 LangGraph4j 的 AI 代码生成平台，面向“自然语言描述 -> 代码生成 -> 文件落盘 -> 项目部署/下载”的完整链路。
 
-**基于 AI 大模型的智能代码生成平台，支持多文件项目生成、实时流式输出、工具调用等企业级特性**
+它不是一个只返回文本的聊天应用，而是一个带有工作流编排、工具调用、会话记忆、流式输出和项目构建能力的代码生成系统。
 
-[功能特性](#-功能特性) • [快速开始](#-快速开始) • [架构设计](#-架构设计) • [API 文档](#-api-文档) • [部署指南](#-部署指南)
+![img.png](doc/img.png)
 
-</div>
+## 项目定位
 
----
+这个项目主要解决以下场景：
 
-## 📋 目录
+- 用户通过自然语言描述需求，生成 HTML、原生多文件项目或 Vue 工程
+- 生成过程通过 SSE 实时返回，前端可以边看边渲染
+- 模型可以调用工具完成文件读写、目录查看、文件修改等操作
+- 首次生成走完整工作流，后续对话走增量续写
+- 生成完成后可以下载代码，也可以部署为可访问的应用
 
-- [项目简介](#-项目简介)
-- [功能特性](#-功能特性)
-- [技术栈](#-技术栈)
-- [系统架构](#-系统架构)
-- [快速开始](#-快速开始)
-- [配置说明](#-配置说明)
-- [API 文档](#-api-文档)
-- [核心功能](#-核心功能)
-- [部署指南](#-部署指南)
-- [性能优化](#-性能优化)
-- [故障排查](#-故障排查)
-- [贡献指南](#-贡献指南)
-- [许可证](#-许可证)
+## 核心特性
 
----
+- 多种生成模式：`html`、`multi_file`、`vue_project`
+- 工作流驱动的首次生成流程
+- 基于工具调用的代码落盘能力
+- 基于 Redis 的会话记忆与历史消息加载
+- 基于 SSE 的实时流式输出
+- 支持代码下载、部署、下线
+- 支持模型调用监控、日志记录和 Prometheus 指标暴露
 
-## 📖 项目简介
+## 技术栈
 
-AI 代码生成平台是一个基于大语言模型（LLM）的智能代码生成系统，通过自然语言描述即可生成完整的前端项目代码。平台采用 **LangGraph4j** 工作流引擎和 **LangChain4j** 框架，支持多种 AI 模型（DeepSeek、Gemini、Qwen 等），实现了企业级的代码生成能力。
+### 后端
 
-### 🎯 核心价值
+- Spring Boot 3.5.6
+- LangChain4j 1.2.0
+- LangGraph4j 1.6.0-rc2
+- MyBatis-Flex 1.11.0
+- Redisson
+- Caffeine
+- Micrometer + Prometheus
 
-- **🤖 智能生成**：通过自然语言描述，自动生成完整的 Vue 3 项目代码
-- **📦 多文件支持**：支持生成包含多个文件的完整项目结构
-- **⚡ 实时流式**：采用 SSE 技术，实时展示代码生成过程
-- **🔧 工具调用**：支持文件读写、目录操作等多种工具调用
-- **💾 会话记忆**：基于 Redis 的分布式会话管理，支持上下文对话
-- **🔄 工作流引擎**：使用 LangGraph4j 实现复杂的代码生成工作流
+### 前端
 
----
+- Vue 3
+- Vite
 
-## ✨ 功能特性
+### 基础设施
 
-### 核心功能
+- MySQL 8
+- Redis 6+
+- 腾讯云 COS
 
-- ✅ **多模型支持**
-  - DeepSeek（推荐，稳定性高）
-  - Gemini 2.0 Flash
-  - 阿里云通义千问
-  - 支持自定义模型接入
+## 项目结构
 
-- ✅ **代码生成能力**
-  - Vue 3 单页应用生成
-  - 多文件项目生成
-  - HTML 静态页面生成
-  - 响应式设计自动适配
-
-- ✅ **工具调用系统**
-  - `writeFile` - 文件写入
-  - `readFile` - 文件读取
-  - `modifyFile` - 文件修改
-  - `deleteFile` - 文件删除
-  - `readDir` - 目录读取
-  - `exit` - 任务完成标记
-
-- ✅ **企业级特性**
-  - 分布式会话管理（Redis）
-  - 请求限流与防护
-  - 完整的监控指标（Prometheus）
-  - 异步任务处理（虚拟线程）
-  - 缓存优化（Caffeine）
-
----
-
-## 🛠 技术栈
-
-### 后端技术
-
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| Spring Boot | 3.5.6 | 核心框架 |
-| LangChain4j | 1.2.0 | AI 应用开发框架 |
-| LangGraph4j | 1.6.0-rc2 | 工作流引擎 |
-| MyBatis-Flex | 1.11.0 | ORM 框架 |
-| Redis | - | 缓存与会话存储 |
-| Redisson | 3.50.0 | 分布式锁 |
-| Caffeine | - | 本地缓存 |
-| Knife4j | 4.4.0 | API 文档 |
-
-### 前端技术
-
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| Vue | 3.3.4 | 前端框架 |
-| Vue Router | 4.2.4 | 路由管理 |
-| Vite | 4.4.5 | 构建工具 |
-
-### AI 模型
-
-| 模型 | 提供商 | 用途 |
-|------|--------|------|
-| DeepSeek Chat | DeepSeek | 代码生成（推荐） |
-| Gemini 2.0 Flash | Google | 代码生成 |
-| Qwen Turbo | 阿里云 | 智能路由 |
-
----
-
-## 🏗 系统架构
-
-### 整体架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         前端层                               │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │ Vue 3 UI │  │ SSE 流式 │  │ 文件预览 │  │ 历史记录 │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                            ↓ HTTP/SSE
-┌─────────────────────────────────────────────────────────────┐
-│                      应用服务层                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │ 代码生成服务 │  │ 会话管理服务 │  │ 文件管理服务 │     │
-│  └──────────────┘  └──────────────┘  └──────────────┘     │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      AI 引擎层                               │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              LangGraph4j 工作流引擎                   │  │
-│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐    │  │
-│  │  │ 路由节点│→│生成节点│→│工具节点│→│结束节点│    │  │
-│  │  └────────┘  └────────┘  └────────┘  └────────┘    │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              LangChain4j AI 服务                      │  │
-│  │  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐    │  │
-│  │  │ 模型调用│  │工具执行│  │记忆管理│  │护栏检查│    │  │
-│  │  └────────┘  └────────┘  └────────┘  └────────┘    │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      基础设施层                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │  MySQL   │  │  Redis   │  │   COS    │  │Prometheus│   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────┘
+```text
+.
+|-- src
+|   |-- main
+|   |   |-- java/com/xuenai/aicodegenerate
+|   |   |   |-- ai                # 模型接入、工具系统、解析与保存
+|   |   |   |-- controller        # REST / SSE 接口
+|   |   |   |-- langgraph         # 工作流、节点、状态与工具
+|   |   |   |-- monitor           # 监控、日志监听、指标采集
+|   |   |   |-- service           # 业务服务层
+|   |   |   `-- exception         # 全局异常处理
+|   |   `-- resources
+|   |       |-- application.yml
+|   |       |-- application-local.yml
+|   |       `-- mapper
+|-- ai-code-generate-vue          # 前端项目
+|-- ai-code-generate-admin        # 管理端项目
+|-- sql/create_table.sql          # 建表脚本
+`-- tmp
+    |-- code_output               # 生成代码输出目录
+    `-- code_deploy               # 部署产物目录
 ```
 
-### 工作流设计
+## 系统架构
 
+### 总体架构
+
+```mermaid
+flowchart LR
+    U["用户 / 前端"] --> C["AppController<br/>SSE / REST"]
+    C --> S["AppService"]
+
+    S --> F{"首次生成?"}
+    F -->|是| W["CodeGenerateConcurrentWorkflow"]
+    F -->|否| G["AiCodeGenerateFacade"]
+
+    W --> N1["图像规划 / 采集"]
+    W --> N2["提示词增强"]
+    W --> N3["类型路由"]
+    W --> N4["代码生成"]
+    W --> N5["质量检查"]
+    W --> N6["项目构建"]
+
+    G --> AF["AiCodeGenerateServiceFactor"]
+    AF --> DM["DynamicAiModelFactory"]
+    AF --> TF["ToolFactory / ToolManage"]
+
+    TF --> T["writeFile / readFile / modifyFile / deleteFile / readDir / exit"]
+    DM --> M["Streaming Chat Model"]
+    M --> T
+
+    S --> CH["ChatHistoryService"]
+    S --> DL["ProjectDownloadService"]
+    S --> SS["ScreenshotService"]
+
+    CH --> MYSQL[(MySQL)]
+    AF --> REDIS[(Redis)]
+    DL --> FS["tmp/code_output / tmp/code_deploy"]
+    SS --> COS[(COS)]
+    M --> MON["MonitorListener / Metrics"]
 ```
-用户输入 → 路由节点 → 判断类型
-                         ├─ 代码生成 → 代码生成节点 → 工具调用 → 判断是否完成
-                         │                                          ├─ 否 → 继续生成
-                         │                                          └─ 是 → 结束节点
-                         └─ 普通对话 → 对话节点 → 结束节点
+
+### 首次生成工作流
+
+首次生成并不是直接调用模型，而是先走工作流，补齐图像资源、增强提示词、确定生成类型，再执行代码生成和质量检查。
+
+```mermaid
+flowchart TD
+    A["开始"] --> B["image_plan"]
+    B --> C1["content_image_collector"]
+    B --> C2["illustration_collector"]
+    B --> C3["logo_collector"]
+    C1 --> D["image_aggregator"]
+    C2 --> D
+    C3 --> D
+    D --> E["prompt_enhancer"]
+    E --> F["router"]
+    F --> G["code_generator"]
+    G --> H["code_quality_check"]
+    H -->|通过且需要构建| I["project_builder"]
+    H -->|通过且无需构建| J["结束"]
+    H -->|失败且重试未超限| G
+    I --> J
 ```
 
----
+### SSE 与工具调用时序
 
-## 🚀 快速开始
+下面这张图更适合帮助前端、后端和排障同学理解一次完整的流式代码生成请求是怎么跑起来的。
 
-### 前置要求
+```mermaid
+sequenceDiagram
+    participant User as "User / Frontend"
+    participant AppController as "AppController"
+    participant AppService as "AppService"
+    participant Workflow as "Workflow or Facade"
+    participant AIService as "AI Service"
+    participant ToolLayer as "ToolFactory / Tools"
+    participant FS as "File System"
+    participant ChatHistory as "ChatHistoryService"
 
-- **JDK**: 21+
-- **Maven**: 3.8+
-- **MySQL**: 8.0+
-- **Redis**: 6.0+
-- **Node.js**: 16+ (前端开发)
+    User->>AppController: GET /app/chat/generate/code (SSE)
+    AppController->>AppService: chatToGenerateCode(appId, userMessage)
+    AppService->>ChatHistory: save user message
 
-### 1. 克隆项目
+    alt first generation
+        AppService->>Workflow: executeWorkflowFlux(...)
+        Workflow-->>AppController: push workflow progress
+    else follow-up generation
+        AppService->>Workflow: generateStreamAndSaveCode(...)
+    end
+
+    Workflow->>AIService: start streaming model request
+    AIService-->>AppController: stream text chunks
+
+    opt model triggers tool calls
+        AIService->>ToolLayer: read / write / modify / delete / dir / exit
+        ToolLayer->>FS: read or write generated files
+        FS-->>ToolLayer: tool execution result
+        ToolLayer-->>AIService: tool result
+        AIService-->>AppController: stream tool events and text events
+    end
+
+    AppController-->>User: SSE data events
+    AppService->>ChatHistory: save AI response/result
+    AppController-->>User: SSE done event
+```
+
+## 关键模块说明
+
+### 1\. 接口层
+
+核心入口在 [AppController.java](https://www.google.com/search?q=src/main/java/com/xuenai/aicodegenerate/controller/AppController.java)。
+
+其中最重要的接口是：
+
+- `GET /app/chat/generate/code`：SSE 流式生成代码
+- `POST /app/add`：创建应用
+- `POST /app/deploy`：部署应用
+- `POST /app/offline`：应用下线
+- `GET /app/download/{appId}`：下载生成代码
+
+### 2\. 应用服务层
+
+[AppServiceImpl.java](https://www.google.com/search?q=src/main/java/com/xuenai/aicodegenerate/service/impl/AppServiceImpl.java) 负责串联“应用、对话、生成、部署”主流程：
+
+- 首次生成：走 `CodeGenerateConcurrentWorkflow`
+- 非首次生成：走 `AiCodeGenerateFacade.generateStreamAndSaveCode`
+- 部署 Vue 项目时会先构建 `dist`
+- 下载时从 `tmp/code_output/<type>_<appId>` 打包
+
+### 3\. AI 服务层
+
+[AiCodeGenerateServiceFactor.java](https://www.google.com/search?q=src/main/java/com/xuenai/aicodegenerate/ai/AiCodeGenerateServiceFactor.java) 负责：
+
+- 按 `appId + generateType` 缓存 AI Service
+- 绑定 Redis ChatMemory
+- 加载历史消息到上下文
+- 注入工具集合
+- 配置输入护栏和工具调用策略
+
+### 4\. 工具系统
+
+当前注册的核心工具位于 `src/main/java/com/xuenai/aicodegenerate/ai/tools`：
+
+这些工具会通过 [ToolFactory.java](https://www.google.com/search?q=src/main/java/com/xuenai/aicodegenerate/ai/tools/ToolFactory.java) 注入上下文，使同一个应用下的工具操作具备目录和生成类型感知能力。
+
+### 5\. 本地 LangChain4j 覆写
+
+项目在 `src/main/java/dev/langchain4j` 下对部分 LangChain4j 类做了本地覆写，用于处理流式工具调用、SSE 场景和工具执行兼容性问题。
+
+这意味着：
+
+- 这个目录不是普通业务代码，而是框架行为定制层
+- 后续升级 LangChain4j 时，需要重点核对这一层的兼容性
+
+## 代码生成模式
+
+[CodeGenerateTypeEnum.java](https://www.google.com/search?q=src/main/java/com/xuenai/aicodegenerate/model/enums/CodeGenerateTypeEnum.java) 当前定义了三种模式：
+
+| 模式 | 值 | 说明 |
+|---|---|---|
+| 原生 HTML 模式 | `html` | 输出单页或简单静态内容 |
+| 原生多文件模式 | `multi_file` | 输出多文件结构，不额外构建 |
+| Vue 工程模式 | `vue_project` | 输出 Vue 项目，部署前需要构建 |
+
+## 快速开始
+
+### 环境要求
+
+- JDK 21+
+- Maven 3.8+
+- MySQL 8.0+
+- Redis 6.0+
+- Node.js 16+
+
+### 1\. 克隆项目
 
 ```bash
-git clone https://github.com/your-org/ai-code-generate.git
+git clone <your-repo-url>
 cd ai-code-generate
 ```
 
-### 2. 配置数据库
+### 2\. 初始化数据库
 
 ```sql
--- 创建数据库
-CREATE DATABASE ai_code_generate CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- 导入表结构
-mysql -u root -p ai_code_generate < sql/schema.sql
+CREATE DATABASE ai_auto_generate CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
-
-### 3. 配置应用
-
-复制配置文件并修改：
 
 ```bash
-cp src/main/resources/application-local.yml.example src/main/resources/application-local.yml
+mysql -u root -p ai_auto_generate < sql/create_table.sql
 ```
 
-编辑 `application-local.yml`，配置数据库和 AI 模型：
+### 3\. 配置本地环境与大模型密钥
 
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/ai_code_generate
-    username: your_username
-    password: your_password
+编辑 `src/main/resources/application-local.yml`，完成以下配置：
 
-langchain4j:
-  open-ai:
-    reasoning:
-      base-url: https://api.deepseek.com
-      api-key: your_deepseek_api_key
-      model-name: deepseek-chat
-```
+- **数据库与缓存**：配置你的 `spring.datasource` 和 `spring.data.redis` 账号密码。
+- **大模型 API Key（必填）**：在 `langchain4j` 相关配置中填入你使用的模型 API Key 和 Base URL。
+- **对象存储**：配置 `cos.client` 等第三方服务（可选）。
 
-### 4. 启动应用
+> **注意**：请勿将包含真实密钥的配置文件直接 Commit 提交到远程仓库。
+
+### 4\. 启动后端
+
+Linux / macOS:
 
 ```bash
-# 编译项目
-mvn clean package -DskipTests
-
-# 启动应用
+./mvnw clean package -DskipTests
 java -jar target/ai-code-generate-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
 ```
 
-### 5. 访问应用
-
-- **API 文档**: http://localhost:8080/api/doc.html
-- **健康检查**: http://localhost:8080/api/actuator/health
-- **监控指标**: http://localhost:8080/api/actuator/prometheus
-
----
-
-## ⚙️ 配置说明
-
-### AI 模型配置
-
-#### DeepSeek（推荐）
-
-```yaml
-langchain4j:
-  open-ai:
-    reasoning:
-      base-url: https://api.deepseek.com
-      api-key: sk-xxxxx
-      model-name: deepseek-chat
-      max-tokens: 8192
-      temperature: 0.7
-```
-
-#### Gemini
-
-```yaml
-langchain4j:
-  gemini:
-    reasoning:
-      base-url: https://your-proxy.com/v1
-      api-key: sk-xxxxx
-      model-name: gemini-2.0-flash-exp
-      max-tokens: 10240
-```
-
-### Redis 配置
-
-```yaml
-spring:
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password: your_password
-      database: 0
-```
-
-### 文件存储配置
-
-```yaml
-cos:
-  client:
-    host: https://your-bucket.cos.region.myqcloud.com
-    secretId: your_secret_id
-    secretKey: your_secret_key
-    region: ap-guangzhou
-    bucket: your-bucket
-```
-
----
-
-## 📚 API 文档
-
-### 代码生成 API
-
-#### 流式生成代码
-
-```http
-GET /api/code/generate/stream?appId=123&message=创建一个响应式数据仪表盘
-```
-
-**响应**（SSE 流式）：
-
-```
-data: {"type":"text","content":"正在生成代码..."}
-
-data: {"type":"tool","name":"writeFile","args":{"relativePath":"index.html","content":"..."}}
-
-data: {"type":"complete","message":"生成完成"}
-```
-
-#### 获取生成历史
-
-```http
-GET /api/code/history?appId=123&page=1&size=20
-```
-
-**响应**：
-
-```json
-{
-  "code": 200,
-  "data": {
-    "records": [
-      {
-        "id": 1,
-        "message": "创建一个响应式数据仪表盘",
-        "messageType": "user",
-        "createTime": "2024-01-24T10:00:00"
-      }
-    ],
-    "total": 100
-  }
-}
-```
-
-### 文件管理 API
-
-#### 下载生成的文件
-
-```http
-GET /api/file/download?appId=123&path=index.html
-```
-
-#### 获取文件列表
-
-```http
-GET /api/file/list?appId=123
-```
-
----
-
-## 🔧 核心功能
-
-### 1. 工具调用系统
-
-平台实现了完整的工具调用系统，AI 可以通过工具完成文件操作：
-
-```java
-@Tool("写入文件到指定路径")
-public String writeFile(
-    @P("文件的相对路径") String relativePath,
-    @P("要写入文件的内容") String content
-) {
-    // 实现文件写入逻辑
-    return "文件写入成功: " + relativePath;
-}
-```
-
-### 2. 会话记忆管理
-
-基于 Redis 的分布式会话管理，支持多轮对话：
-
-```java
-MessageWindowChatMemory chatMemory = MessageWindowChatMemory.builder()
-    .id(appId)
-    .chatMemoryStore(customRedisChatMemoryStore)
-    .maxMessages(100)
-    .build();
-```
-
-### 3. 流式输出
-
-采用 SSE（Server-Sent Events）技术，实时展示生成过程：
-
-```java
-@GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-public Flux<ServerSentEvent<String>> generateStream(
-    @RequestParam Long appId,
-    @RequestParam String message
-) {
-    return codeGenerateService.generateCodeStream(appId, message);
-}
-```
-
-### 4. 工作流引擎
-
-使用 LangGraph4j 实现复杂的代码生成工作流：
-
-```java
-StateGraph<AgentState> workflow = new StateGraph<>(AgentState::new)
-    .addNode("router", routerNode)
-    .addNode("codeGenerator", codeGeneratorNode)
-    .addNode("toolExecutor", toolExecutorNode)
-    .addEdge(START, "router")
-    .addConditionalEdges("router", routingFunction)
-    .addEdge("codeGenerator", END);
-```
-
----
-
-## 🚢 部署指南
-
-### Docker 部署
-
-#### 1. 构建镜像
+Windows:
 
 ```bash
-# 构建应用镜像
-docker build -t ai-code-generate:latest .
+mvnw.cmd clean package -DskipTests
+java -jar target/ai-code-generate-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
 ```
 
-#### 2. 使用 Docker Compose
-
-```yaml
-version: '3.8'
-
-services:
-  app:
-    image: ai-code-generate:latest
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ai_code_generate
-      - SPRING_REDIS_HOST=redis
-    depends_on:
-      - mysql
-      - redis
-
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: ai_code_generate
-    volumes:
-      - mysql_data:/var/lib/mysql
-
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_data:/data
-
-volumes:
-  mysql_data:
-  redis_data:
-```
-
-启动服务：
+### 5\. 启动前端
 
 ```bash
-docker-compose up -d
+cd ai-code-generate-vue
+npm install
+npm run dev
 ```
 
-### Kubernetes 部署
+## 生成产物与部署目录
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ai-code-generate
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: ai-code-generate
-  template:
-    metadata:
-      labels:
-        app: ai-code-generate
-    spec:
-      containers:
-      - name: app
-        image: ai-code-generate:latest
-        ports:
-        - containerPort: 8080
-        env:
-        - name: SPRING_PROFILES_ACTIVE
-          value: "prod"
-        resources:
-          requests:
-            memory: "2Gi"
-            cpu: "1000m"
-          limits:
-            memory: "4Gi"
-            cpu: "2000m"
-```
+[AppConstant.java](https://www.google.com/search?q=src/main/java/com/xuenai/aicodegenerate/constant/AppConstant.java) 中定义了关键目录：
 
----
+- 代码输出目录：`tmp/code_output`
+- 部署输出目录：`tmp/code_deploy`
 
-## ⚡ 性能优化
+## 开发注意事项
 
-### 1. 缓存策略
+### 1\. `langchain4j` 覆写层不是普通业务代码
 
-- **本地缓存**：使用 Caffeine 缓存 AI 服务实例（30分钟过期）
-- **分布式缓存**：使用 Redis 缓存会话数据和生成结果
+`src/main/java/dev/langchain4j` 中的类会直接影响流式输出、工具聚合和工具执行行为。如果修改这里的代码，请把它当作“框架兼容层”看待。
 
-### 2. 异步处理
+### 2\. 流式工具调用必须按同一个 index 聚合
 
-- 使用 Java 21 虚拟线程处理并发请求
-- 工作流节点异步执行，提升响应速度
+模型流式返回的 `tool_calls` 可能分多段返回。如果这里没有按稳定的 `tool call index` 聚合，就会出现有参数无工具名等导致 `toolExecutor is null` 的异常。
 
-### 3. 连接池优化
+### 3\. 工具执行失败应优先降级
 
-```yaml
-spring:
-  datasource:
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
-```
+当模型返回异常 tool call 时，更合理的行为是返回“没有该工具”或“工具名缺失”的结果给模型，让模型继续收敛，而不是直接抛错打崩整条链路。
 
-### 4. 监控指标
+### 4\. 工具调用的路径安全防御 (重要)
 
-集成 Prometheus 监控：
+请在后续开发中确保所有文件操作（如 `FileWriteTool`, `FileDeleteTool` 等）具备严格的**路径沙箱校验**，防止大模型幻觉生成包含 `../` 的路径导致跨目录越权操作。
 
-- AI 模型调用次数
-- 代码生成成功率
-- 平均响应时间
-- 工具调用统计
+### 5\. SSE 异常返回必须保持事件流语义
 
----
+SSE 接口报错时，不要再混用普通 JSON 异常响应，否则极易出现 `getOutputStream() has already been called` 冲突。
 
-## 🔍 故障排查
+## 常用地址
 
-### 常见问题
+- 接口文档：`http://localhost:8080/api/doc.html`
+- 健康检查：`http://localhost:8080/api/actuator/health`
+- Prometheus 指标：`http://localhost:8080/api/actuator/prometheus`
 
-#### 1. `toolExecutor is null` 错误
-
-**原因**：LangChain4j 源码中 `copy()` 方法导致 Map 丢失
-
-**解决**：已在 `AiServiceStreamingResponseHandler.java` 中修复，使用直接赋值
-
-#### 2. Gemini `thought_signature` 错误
-
-**原因**：Gemini Thinking 模型需要特殊字段
-
-**解决**：切换到 DeepSeek 或使用非 Thinking 版本的 Gemini
-
-#### 3. 工具名称重复累积
-
-**原因**：Gemini API 每个 SSE 都包含完整工具信息
-
-**解决**：已在 `OpenAiStreamingResponseBuilder.java` 中修复，只在第一次设置工具名称
-
-#### 4. 缓存未更新
-
-**原因**：Caffeine 缓存未过期
-
-**解决**：重启应用或等待缓存过期（10-30分钟）
-
-### 日志配置
-
-```yaml
-logging:
-  level:
-    com.xuenai.aicodegenerate: DEBUG
-    dev.langchain4j: DEBUG
-  file:
-    name: logs/application.log
-```
-
----
-
-## 🤝 贡献指南
-
-我们欢迎所有形式的贡献！
-
-### 贡献流程
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-### 代码规范
-
-- 遵循阿里巴巴 Java 开发手册
-- 使用 Lombok 简化代码
-- 添加必要的注释和文档
-- 编写单元测试
-
----
-
-## 📄 许可证
-
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
-
----
-
-## 🙏 致谢
-
-- [LangChain4j](https://github.com/langchain4j/langchain4j) - AI 应用开发框架
-- [LangGraph4j](https://github.com/bsorrentino/langgraph4j) - 工作流引擎
-- [Spring Boot](https://spring.io/projects/spring-boot) - 应用框架
-- [DeepSeek](https://www.deepseek.com/) - AI 模型提供商
-
----
-
-## 📞 联系我们
-
-- **问题反馈**: [GitHub Issues](https://github.com/your-org/ai-code-generate/issues)
-- **邮箱**: support@example.com
-- **文档**: [在线文档](https://docs.example.com)
-
----
-
-<div align="center">
-
-**⭐ 如果这个项目对你有帮助，请给我们一个 Star！⭐**
-
-Made with ❤️ by AI Code Generate Team
-
-</div>

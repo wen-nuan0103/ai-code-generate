@@ -51,11 +51,6 @@ public class AiServiceTokenStream implements TokenStream {
     private int onErrorInvoked;
     private int ignoreErrorsInvoked;
 
-    /**
-     * Creates a new instance of {@link AiServiceTokenStream} with the given parameters.
-     *
-     * @param parameters the parameters for creating the token stream
-     */
     public AiServiceTokenStream(AiServiceTokenStreamParameters parameters) {
         ensureNotNull(parameters, "parameters");
         this.messages = copy(ensureNotEmpty(parameters.messages(), "messages"));
@@ -77,13 +72,15 @@ public class AiServiceTokenStream implements TokenStream {
     }
 
     @Override
-    public TokenStream onPartialToolExecutionRequest(BiConsumer<Integer, ToolExecutionRequest> toolExecutionRequestHandler) {
+    public TokenStream onPartialToolExecutionRequest(
+            BiConsumer<Integer, ToolExecutionRequest> toolExecutionRequestHandler) {
         this.partialToolExecutionRequestHandler = toolExecutionRequestHandler;
         return this;
     }
 
     @Override
-    public TokenStream onCompleteToolExecutionRequest(BiConsumer<Integer, ToolExecutionRequest> completedHandler) {
+    public TokenStream onCompleteToolExecutionRequest(
+            BiConsumer<Integer, ToolExecutionRequest> completedHandler) {
         this.completeToolExecutionRequestHandler = completedHandler;
         return this;
     }
@@ -126,15 +123,6 @@ public class AiServiceTokenStream implements TokenStream {
     @Override
     public void start() {
         validateConfiguration();
-
-
-        System.out.println("=== AiServiceTokenStream Debug ===");
-        System.out.println("toolSpecifications: " + (toolSpecifications != null ? toolSpecifications.size() : "null"));
-        System.out.println("toolExecutors: " + (toolExecutors != null ? toolExecutors.size() : "null"));
-        if (toolExecutors != null) {
-            System.out.println("toolExecutors keys: " + toolExecutors.keySet());
-        }
-        System.out.println("==================================");
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(messages)
@@ -185,7 +173,7 @@ public class AiServiceTokenStream implements TokenStream {
         }
         if (onErrorInvoked + ignoreErrorsInvoked != 1) {
             throw new IllegalConfigurationException(
-                    "One of [onError, ignoreErrors] " + "must be invoked on TokenStream exactly 1 time");
+                    "One of [onError, ignoreErrors] must be invoked on TokenStream exactly 1 time");
         }
     }
 

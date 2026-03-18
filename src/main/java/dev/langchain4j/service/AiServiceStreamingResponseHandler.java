@@ -29,11 +29,12 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * Handles response from a language model for AI Service that is streamed token-by-token. Handles both regular (text)
- * responses and responses with the request to execute one or multiple tools.
+ * Handles response from a language model for AI Service that is streamed token-by-token.
+ * Handles both regular (text) responses and responses with tool execution requests.
  */
 @Internal
 class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler {
+
     private static final Logger LOG = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
 
     private final ChatExecutor chatExecutor;
@@ -47,12 +48,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final BiConsumer<Integer, ToolExecutionRequest> completeToolExecutionRequestHandler;
     private final Consumer<ToolExecution> toolExecutionHandler;
     private final Consumer<ChatResponse> completeResponseHandler;
-
     private final Consumer<Throwable> errorHandler;
 
     private final ChatMemory temporaryMemory;
     private final TokenUsage tokenUsage;
-
     private final List<ToolSpecification> toolSpecifications;
     private final Map<String, ToolExecutor> toolExecutors;
     private final List<String> responseBuffer = new ArrayList<>();
@@ -78,34 +77,22 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
         this.methodKey = methodKey;
-
         this.partialResponseHandler = ensureNotNull(partialResponseHandler, "partialResponseHandler");
         this.partialToolExecutionRequestHandler = partialToolExecutionRequestHandler;
         this.completeToolExecutionRequestHandler = completeToolExecutionRequestHandler;
-        this.completeResponseHandler = completeResponseHandler;
         this.toolExecutionHandler = toolExecutionHandler;
+        this.completeResponseHandler = completeResponseHandler;
         this.errorHandler = errorHandler;
-
         this.temporaryMemory = temporaryMemory;
         this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
-        this.commonGuardrailParams = commonGuardrailParams;
-
         this.toolSpecifications = copy(toolSpecifications);
-        // ⭐ 修复：直接赋值而不是复制，避免 copy() 方法返回 null
         this.toolExecutors = toolExecutors;
-        
-        // ⭐ 添加调试日志
-        System.out.println("=== AiServiceStreamingResponseHandler Constructor ===");
-        System.out.println("Input toolExecutors: " + (toolExecutors != null ? toolExecutors.size() + " - " + toolExecutors.keySet() : "null"));
-        System.out.println("After assign toolExecutors: " + (this.toolExecutors != null ? this.toolExecutors.size() + " - " + this.toolExecutors.keySet() : "null"));
-        System.out.println("====================================================");
-        
+        this.commonGuardrailParams = commonGuardrailParams;
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
     }
 
     @Override
     public void onPartialResponse(String partialResponse) {
-        // If we're using output guardrails, then buffer the partial response until the guardrails have completed
         if (hasOutputGuardrails) {
             responseBuffer.add(partialResponse);
         } else {
@@ -115,8 +102,16 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onPartialToolExecutionRequest(int index, ToolExecutionRequest partialToolExecutionRequest) {
-        // If we're using output guardrails, then buffer the partial response until the guardrails have completed
-        partialToolExecutionRequestHandler.accept(index, partialToolExecutionRequest);
+        if (partialToolExecutionRequestHandler != null) {
+            partialToolExecutionRequestHandler.accept(index, partialToolExecutionRequest);
+        }
+    }
+
+    @Override
+    public void onCompleteToolExecutionRequest(int index, ToolExecutionRequest completeToolExecutionRequest) {
+        if (completeToolExecutionRequestHandler != null) {
+            completeToolExecutionRequestHandler.accept(index, completeToolExecutionRequest);
+        }
     }
 
     @Override
@@ -126,21 +121,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
         if (aiMessage.hasToolExecutionRequests()) {
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                String toolName = toolExecutionRequest.name();
-                
-                // ⭐ 添加调试日志
-                System.out.println("=== Tool Execution Debug ===");
-                System.out.println("Requested tool name: " + toolName);
-                System.out.println("toolExecutors is null: " + (toolExecutors == null));
-                if (toolExecutors != null) {
-                    System.out.println("toolExecutors size: " + toolExecutors.size());
-                    System.out.println("toolExecutors keys: " + toolExecutors.keySet());
-                    System.out.println("Contains key '" + toolName + "': " + toolExecutors.containsKey(toolName));
-                }
-                System.out.println("============================");
-                
-                ToolExecutor toolExecutor = toolExecutors.get(toolName);
-                String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                String toolExecutionResult = executeTool(toolExecutionRequest);
                 ToolExecutionResultMessage toolExecutionResultMessage =
                         ToolExecutionResultMessage.from(toolExecutionRequest, toolExecutionResult);
                 addToMemory(toolExecutionResultMessage);
@@ -177,46 +158,62 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     methodKey);
 
             context.streamingChatModel.chat(chatRequest, handler);
-        } else {
-            if (completeResponseHandler != null) {
-                ChatResponse finalChatResponse = ChatResponse.builder()
-                        .aiMessage(aiMessage)
-                        .metadata(completeResponse.metadata().toBuilder()
-                                .tokenUsage(tokenUsage.add(
-                                        completeResponse.metadata().tokenUsage()))
-                                .build())
+            return;
+        }
+
+        if (completeResponseHandler == null) {
+            return;
+        }
+
+        ChatResponse finalChatResponse = ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .metadata(completeResponse.metadata().toBuilder()
+                        .tokenUsage(tokenUsage.add(completeResponse.metadata().tokenUsage()))
+                        .build())
+                .build();
+
+        if (hasOutputGuardrails) {
+            if (commonGuardrailParams != null) {
+                var newCommonParams = GuardrailRequestParams.builder()
+                        .chatMemory(getMemory())
+                        .augmentationResult(commonGuardrailParams.augmentationResult())
+                        .userMessageTemplate(commonGuardrailParams.userMessageTemplate())
+                        .variables(commonGuardrailParams.variables())
                         .build();
 
-                // Invoke output guardrails
-                if (hasOutputGuardrails) {
-                    if (commonGuardrailParams != null) {
-                        var newCommonParams = GuardrailRequestParams.builder()
-                                .chatMemory(getMemory())
-                                .augmentationResult(commonGuardrailParams.augmentationResult())
-                                .userMessageTemplate(commonGuardrailParams.userMessageTemplate())
-                                .variables(commonGuardrailParams.variables())
-                                .build();
+                var outputGuardrailParams = OutputGuardrailRequest.builder()
+                        .responseFromLLM(finalChatResponse)
+                        .chatExecutor(chatExecutor)
+                        .requestParams(newCommonParams)
+                        .build();
 
-                        var outputGuardrailParams = OutputGuardrailRequest.builder()
-                                .responseFromLLM(finalChatResponse)
-                                .chatExecutor(chatExecutor)
-                                .requestParams(newCommonParams)
-                                .build();
-
-                        finalChatResponse =
-                                context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
-                    }
-
-                    // If we have output guardrails, we should process all of the partial responses first before
-                    // completing
-                    responseBuffer.forEach(partialResponseHandler::accept);
-                    responseBuffer.clear();
-                }
-
-                // TODO should completeResponseHandler accept all ChatResponses that happened?
-                completeResponseHandler.accept(finalChatResponse);
+                finalChatResponse =
+                        context.guardrailService().executeGuardrails(methodKey, outputGuardrailParams);
             }
+
+            responseBuffer.forEach(partialResponseHandler::accept);
+            responseBuffer.clear();
         }
+
+        completeResponseHandler.accept(finalChatResponse);
+    }
+
+    private String executeTool(ToolExecutionRequest toolExecutionRequest) {
+        String toolName = toolExecutionRequest.name();
+        if (toolName == null || toolName.isBlank()) {
+            LOG.warn("Ignoring tool execution request without a name: id={}, arguments={}",
+                    toolExecutionRequest.id(), toolExecutionRequest.arguments());
+            return "Error: tool name is missing in the model response";
+        }
+
+        ToolExecutor toolExecutor = toolExecutors == null ? null : toolExecutors.get(toolName);
+        if (toolExecutor == null) {
+            LOG.warn("Tool executor not found for '{}', available tools: {}",
+                    toolName, toolExecutors == null ? List.of() : toolExecutors.keySet());
+            return "Error: there is no tool called " + toolName;
+        }
+
+        return toolExecutor.execute(toolExecutionRequest, memoryId);
     }
 
     private ChatMemory getMemory() {
@@ -224,15 +221,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private ChatMemory getMemory(Object memId) {
-        return context.hasChatMemory() ? context.chatMemoryService.getOrCreateChatMemory(memoryId) : temporaryMemory;
+        return context.hasChatMemory() ? context.chatMemoryService.getOrCreateChatMemory(memId) : temporaryMemory;
     }
 
     private void addToMemory(ChatMessage chatMessage) {
         getMemory().add(chatMessage);
     }
 
-    private List<ChatMessage> messagesToSend(Object memoryId) {
-        return getMemory(memoryId).messages();
+    private List<ChatMessage> messagesToSend(Object memId) {
+        return getMemory(memId).messages();
     }
 
     @Override
